@@ -34,8 +34,9 @@ def preprocess(document_text: list) -> list:
        :return: the preprocessed words as a list of strings
     """
     lemma = nltk.wordnet.WordNetLemmatizer()
-    def is_num(x):
-        return not (x.isdigit() or (x[0]=='-' and x[1:].isdigit()))
+    def is_num(num: int):
+        """sub-function to check if something is a number"""
+        return not (num.isdigit() or (num[0]=='-' and num[1:].isdigit()))
 
     preprocessed = list(
         filter(

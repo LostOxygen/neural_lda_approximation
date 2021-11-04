@@ -14,7 +14,8 @@ def train_lda(num_workers: int, num_topics: int, words_list: list) -> None:
 
     dictionary = gensim.corpora.Dictionary(words_list)
     bow_list = list(map(lambda x: dictionary.doc2bow(x), words_list))
-    ldamodel = LdaMulticore(bow_list, num_topics=num_topics, id2word=dictionary, passes=100, workers=num_workers)
+    ldamodel = LdaMulticore(bow_list, num_topics=num_topics, id2word=dictionary,
+                            passes=100, workers=num_workers)
 
     print("[ saving lda model in {} ]".format(LDA_PATH+"lda_model"))
     if not os.path.isdir(LDA_PATH):
