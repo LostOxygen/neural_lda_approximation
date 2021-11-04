@@ -9,7 +9,7 @@ import torch
 import numpy as np
 from utils.words import get_word_list
 
-def main(gpu: int, workers: int, num_topics: int) -> None:
+def main(gpu: int, workers: int, num_topics: int, verbose: bool) -> None:
     """main method"""
     words_list = get_word_list()
     print(words_list)
@@ -21,6 +21,7 @@ if __name__ == "__main__":
                         type=int, default=4)
     parser.add_argument("--num_topics", "-t", help="number of topics for lda",
                         type=int, default=20)
+    parser.add_argument("--verbose", "-v", help="enable verbose mode", type=bool, default=False)
 
     args = parser.parse_args()
     main(**vars(args))
