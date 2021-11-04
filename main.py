@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 #!/usr/bin/env python3
 import time
-import os
 import socket
 import datetime
 import argparse
@@ -13,7 +12,7 @@ from utils.lda import train_lda
 
 torch.backends.cudnn.benchmark = True
 
-def main(gpu: int, num_workers: int, num_topics: int, verbose: bool) -> None:
+def main(gpu: int, num_workers: int, num_topics: int) -> None:
     """main method"""
     start = time.perf_counter()
     # set device properly
@@ -26,9 +25,9 @@ def main(gpu: int, num_workers: int, num_topics: int, verbose: bool) -> None:
     print("\n\n\n"+"#"*50)
     print("## " + str(datetime.datetime.now().strftime("%A, %d. %B %Y %I:%M%p")))
     print("## System: {} CPU cores with {} GPUs on {}".format(torch.get_num_threads(),
-                                                             torch.cuda.device_count(),
-                                                             socket.gethostname()
-                                                             ))
+                                                              torch.cuda.device_count(),
+                                                              socket.gethostname()
+                                                              ))
     if DEVICE == 'cpu':
         print("## Using: CPU with ID {}".format(DEVICE))
     else:
@@ -52,7 +51,6 @@ if __name__ == "__main__":
                         type=int, default=4)
     parser.add_argument("--num_topics", "-t", help="number of topics for lda",
                         type=int, default=20)
-    parser.add_argument("--verbose", "-v", help="enable verbose mode", type=bool, default=False)
 
     args = parser.parse_args()
     main(**vars(args))
