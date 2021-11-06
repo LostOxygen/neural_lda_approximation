@@ -4,6 +4,7 @@ import gensim
 from gensim.models import LdaMulticore
 
 LDA_PATH = "./models/"
+DATA_PATH = "./data/"
 
 def train_lda(num_workers: int, num_topics: int, words_list: list) -> None:
     """helper method to train and save a lda model in a specified path
@@ -11,11 +12,11 @@ def train_lda(num_workers: int, num_topics: int, words_list: list) -> None:
        :param num_topics: number of topics for the lda
        :param words_list: the list of words on which the lda should be computed
     """
-
     dictionary = gensim.corpora.Dictionary(words_list)
+    # create a word corpus
     bow_list = list(map(lambda x: dictionary.doc2bow(x), words_list))
     ldamodel = LdaMulticore(bow_list, num_topics=num_topics, id2word=dictionary,
-                            passes=100, workers=num_workers)
+                            passes=1, workers=num_workers, eval_every=0)
 
     print("[ saving lda model in {} ]".format(LDA_PATH+"lda_model"))
     if not os.path.isdir(LDA_PATH):

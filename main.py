@@ -3,16 +3,21 @@
 #!/usr/bin/env python3
 import time
 import socket
+import logging
 import datetime
 import argparse
+import os
 import torch
 import numpy as np
-from utils.words import get_word_list
+from utils.words import get_word_list, save_train_data, save_train_labels
 from utils.lda import train_lda
+from utils.train import train
 
 torch.backends.cudnn.benchmark = True
+# logging for gensim output
+# logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
-def main(gpu: int, num_workers: int, num_topics: int) -> None:
+def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool) -> None:
     """main method"""
     start = time.perf_counter()
     # set device properly
@@ -37,8 +42,42 @@ def main(gpu: int, num_workers: int, num_topics: int) -> None:
     print("#"*50)
     print("\n\n\n")
 
-    words_list = get_word_list()
-    train_lda(num_workers, num_topics, words_list)
+    if not os.path.isfile("./models/lda_model"):
+        # obtain a preprocessed list of words
+        words_list = get_word_list()
+        train_lda(num_workers, num_topics, words_list)
+    elif from_scratch:
+        # obtain a preprocessed list of words
+        words_list = get_word_list()
+        train_lda(num_workers, num_topics, words_list)
+    else:
+        print("[ a trained LDA model already exists. Train again? [y/n] ]")
+        if from_scratch or input() == "y":
+            # obtain a preprocessed list of words
+            words_list = get_word_list()
+            train_lda(num_workers, num_topics, words_list)
+
+    if not os.path.isdir("./data/"):
+        # save the lda model data as training data with labels
+        save_train_data()
+        save_train_labels()
+    elif from_scratch:
+        # save the lda model data as training data with labels
+        save_train_data()
+        save_train_labels()
+    else:
+        print("[ training data/labels already exists. Save them again? [y/n] ]")
+        if from_scratch or input() == "y":
+            # save the lda model data as training data with labels
+            save_train_data()
+            save_train_labels()
+
+    train(epochs=100,
+          learning_rate=0.001,
+          batch_size=128,
+          num_topics=num_topics,
+          device_name=DEVICE)
+
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.
@@ -51,6 +90,8 @@ if __name__ == "__main__":
                         type=int, default=4)
     parser.add_argument("--num_topics", "-t", help="number of topics for lda",
                         type=int, default=20)
+    parser.add_argument("--from_scratch", "-s", help="train lda from scratch",
+                        action='store_true', default=False)
 
     args = parser.parse_args()
     main(**vars(args))
