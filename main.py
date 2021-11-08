@@ -72,9 +72,9 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool) -> Non
             save_train_data()
             save_train_labels()
 
-    train(epochs=100,
-          learning_rate=0.001,
-          batch_size=128,
+    train(epochs=250,
+          learning_rate=0.01,
+          batch_size=1,
           num_topics=num_topics,
           device_name=DEVICE)
 
@@ -89,7 +89,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_workers", "-w", help="number of workers for lda",
                         type=int, default=4)
     parser.add_argument("--num_topics", "-t", help="number of topics for lda",
-                        type=int, default=20)
+                        type=int, default=30)
     parser.add_argument("--from_scratch", "-s", help="train lda from scratch",
                         action='store_true', default=False)
 

@@ -5,12 +5,11 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.transforms as transforms
-import torchvision.models as models
 from torch.utils.data import DataLoader
 import numpy as np
 import pkbar
 import gensim
-from utils.network import DNN
+from utils.network import DNN, CustomCrossEntropy
 from utils.words import TRAIN_SET, TEST_SET, DATA_PATH, LABEL_PATH
 from utils.dataset import TensorDataset
 
@@ -114,8 +113,10 @@ def get_loaders(batch_size: int) -> DataLoader:
     train_dataset = TensorDataset(train_data, train_labels, transform=transforms.ToTensor())
     test_dataset = TensorDataset(test_data, test_labels, transform=transforms.ToTensor())
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=0)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=0)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size,
+                              shuffle=True, num_workers=0)
+    test_loader = DataLoader(test_dataset, batch_size=batch_size,
+                             shuffle=False, num_workers=0)
     return train_loader, test_loader
 
 
@@ -142,12 +143,9 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
     dictionary = ldamodel.id2word
     # input dimension of the model is the length of the dictionary
     net = get_model(num_topics, len(dictionary))
-    # if transfer learning flag is set, freeze certain layers and only pass the non frozen
-    # layers to the optimizer
-    net_parameters = net.parameters()
 
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.SGD(net_parameters, lr=learning_rate, momentum=0.9, weight_decay=5e-4)
+    criterion = CustomCrossEntropy()
+    optimizer = optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
     train_loader, test_loader = get_loaders(batch_size)
 
     for epoch in range(0, epochs):
@@ -165,19 +163,19 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
         # iterates over a batch of training data
         for batch_idx, (inputs, targets) in enumerate(train_loader):
             inputs, targets = inputs.to(device), targets.to(device)
+
             optimizer.zero_grad()
             outputs = net(inputs)
+
             loss = criterion(outputs, targets)
             loss.backward()
-
             optimizer.step()
-            _, predicted = outputs.max(1)
 
             # calculate the current running loss as well as the total accuracy
             # and update the progressbar accordingly
             running_loss += loss.item()
             total += targets.size(0)
-            correct += predicted.eq(targets).sum().item()
+            correct += outputs.eq(targets).sum().item()
 
             kbar.update(batch_idx, values=[("loss", running_loss/(batch_idx+1)),
                                            ("acc", 100. * correct / total)])
@@ -189,9 +187,9 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
             for _, (inputs_t, targets_t) in enumerate(test_loader):
                 inputs_t, targets_t = inputs_t.to(device), targets_t.to(device)
                 outputs_t = net(inputs_t)
-                _, predicted_t = outputs_t.max(1)
+
                 t_total += targets_t.size(0)
-                t_correct += predicted_t.eq(targets_t).sum().item()
+                t_correct += outputs_t.eq(targets_t).sum().item()
             print("-> test acc: {}".format(100.*t_correct/t_total))
 
         # save the model at the end of the specified epochs as well as at
@@ -208,8 +206,8 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
         for _, (inputs_t, targets_t) in enumerate(test_loader):
             inputs_t, targets_t = inputs_t.to(device), targets_t.to(device)
             outputs_t = net(inputs_t)
-            _, predicted_t = outputs_t.max(1)
+
             t_total += targets_t.size(0)
-            t_correct += predicted_t.eq(targets_t).sum().item()
+            t_correct += outputs_t.eq(targets_t).sum().item()
 
     print("Final accuracy: Train: {} | Test: {}".format(100.*correct/total, 100.*t_correct/t_total))

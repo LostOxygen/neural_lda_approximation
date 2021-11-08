@@ -34,6 +34,8 @@ def save_train_data() -> None:
     dictionary = ldamodel.id2word
 
     print("[ saving dictionary data in {} ]".format(DATA_PATH))
+    if not os.path.isdir(DATA_PATH):
+        os.mkdir(DATA_PATH)
     if not os.path.isdir(DATA_PATH+"training"):
         os.mkdir(DATA_PATH+"training")
     if not os.path.isdir(DATA_PATH+"test"):
@@ -42,8 +44,6 @@ def save_train_data() -> None:
     for i in TRAIN_SET + TEST_SET:
         logging.info(i)
         bow = dictionary.doc2bow(preprocess(reuters.raw(i)))
-        # convert the dictionary value to string, so json can dump it properly
-        # bow = (bow[0][0], str(bow[0][1]))
         with open(os.path.join(DATA_PATH, i), 'w+') as f:
             json.dump(dict(bow), f)
 
@@ -66,11 +66,11 @@ def save_train_labels() -> None:
         with open(os.path.join(LABEL_PATH, i), 'w+') as f:
             json.dump(list(
                 map(lambda x: float(x[1]), ldamodel.get_document_topics(
-                        list(
-                            map(
-                                lambda x: (int(x[0]), int(x[1])), bow.items()
-                                )
-                            ), minimum_probability=0.0)
+                    list(
+                        map(
+                            lambda x: (int(x[0]), int(x[1])), bow.items()
+                            )
+                        ), minimum_probability=0.0)
                     )), f)
 
 
@@ -89,7 +89,7 @@ def preprocess(document_text: list) -> list:
     lemma = nltk.wordnet.WordNetLemmatizer()
     def is_num(num: int):
         """sub-function to check if something is a number"""
-        return not (num.isdigit() or (num[0]=='-' and num[1:].isdigit()))
+        return not (num.isdigit() or (num[0] == '-' and num[1:].isdigit()))
 
     preprocessed = list(
         filter(

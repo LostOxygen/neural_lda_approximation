@@ -16,7 +16,7 @@ def train_lda(num_workers: int, num_topics: int, words_list: list) -> None:
     # create a word corpus
     bow_list = list(map(lambda x: dictionary.doc2bow(x), words_list))
     ldamodel = LdaMulticore(bow_list, num_topics=num_topics, id2word=dictionary,
-                            passes=1, workers=num_workers, eval_every=0)
+                            passes=100, workers=num_workers, eval_every=0)
 
     print("[ saving lda model in {} ]".format(LDA_PATH+"lda_model"))
     if not os.path.isdir(LDA_PATH):
