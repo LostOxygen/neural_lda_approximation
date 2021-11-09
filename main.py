@@ -12,6 +12,7 @@ import numpy as np
 from utils.words import get_word_list, save_train_data, save_train_labels
 from utils.lda import train_lda
 from utils.train import train
+from utils.eval import evaluate
 
 torch.backends.cudnn.benchmark = True
 # logging for gensim output
@@ -44,18 +45,19 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool) -> Non
 
     if not os.path.isfile("./models/lda_model"):
         # obtain a preprocessed list of words
-        words_list = get_word_list()
+        words_list = get_word_list(is_train=True)
         train_lda(num_workers, num_topics, words_list)
     elif from_scratch:
         # obtain a preprocessed list of words
-        words_list = get_word_list()
+        words_list = get_word_list(is_train=True)
         train_lda(num_workers, num_topics, words_list)
     else:
         print("[ a trained LDA model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
             # obtain a preprocessed list of words
-            words_list = get_word_list()
+            words_list = get_word_list(is_train=True)
             train_lda(num_workers, num_topics, words_list)
+
 
     if not os.path.isdir("./data/"):
         # save the lda model data as training data with labels
@@ -72,12 +74,33 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool) -> Non
             save_train_data()
             save_train_labels()
 
-    train(epochs=250,
-          learning_rate=0.01,
-          batch_size=1,
-          num_topics=num_topics,
-          device_name=DEVICE)
 
+    if not os.path.isfile("./models/dnn_model"):
+        # train the DNN model on the lda dataset
+        train(epochs=250,
+              learning_rate=0.01,
+              batch_size=1,
+              num_topics=num_topics,
+              device_name=DEVICE)
+    elif from_scratch:
+        # train the DNN model on the lda dataset
+        train(epochs=250,
+              learning_rate=0.01,
+              batch_size=1,
+              num_topics=num_topics,
+              device_name=DEVICE)
+    else:
+        print("[ a trained LDA model already exists. Train again? [y/n] ]")
+        if from_scratch or input() == "y":
+            # train the DNN model on the lda dataset
+            train(epochs=250,
+                  learning_rate=0.01,
+                  batch_size=1,
+                  num_topics=num_topics,
+                  device_name=DEVICE)
+
+    # evaluate both the lda and the dnn model and print their top topics
+    evaluate(num_topics)
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.
