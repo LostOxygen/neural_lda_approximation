@@ -4,7 +4,6 @@ import json
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision.transforms as transforms
 from torch.utils.data import DataLoader
 import numpy as np
 import pkbar
@@ -14,6 +13,7 @@ from utils.words import TRAIN_SET, TEST_SET, DATA_PATH, LABEL_PATH
 from utils.dataset import TensorDataset
 
 SAVE_EPOCHS = [0, 25, 50, 75]
+
 
 def save_model(net: nn.Sequential) -> None:
     """
@@ -80,7 +80,7 @@ def get_loaders(batch_size: int) -> DataLoader:
         for k, v in d.items():
             empty[int(k)] = float(v)
         train_data.append(empty)
-    train_data = torch.FloatTensor(train_data)
+    train_data = torch.FloatTensor(train_data).to(device)
 
     train_labels = []
     for i in TRAIN_SET:
@@ -89,7 +89,7 @@ def get_loaders(batch_size: int) -> DataLoader:
             tmp_str = f.readlines()
             tmp_str = list(map(float, tmp_str[0].replace("[", "").replace("]", "").split(",")))
             train_labels.append(tmp_str)
-    train_labels = torch.FloatTensor(train_labels)
+    train_labels = torch.FloatTensor(train_labels).to(device)
 
     test_data = []
     for i in TEST_SET:
@@ -99,7 +99,7 @@ def get_loaders(batch_size: int) -> DataLoader:
         for k, v in d.items():
             empty[int(k)] = float(v)
         test_data.append(empty)
-    test_data = torch.FloatTensor(test_data)
+    test_data = torch.FloatTensor(test_data).to(device)
 
     test_labels = []
     for i in TEST_SET:
@@ -108,10 +108,10 @@ def get_loaders(batch_size: int) -> DataLoader:
             tmp_str = f.readlines()
             tmp_str = list(map(float, tmp_str[0].replace("[", "").replace("]", "").split(",")))
             test_labels.append(tmp_str)
-    test_labels = torch.FloatTensor(test_labels)
+    test_labels = torch.FloatTensor(test_labels).to(device)
 
-    train_dataset = TensorDataset(train_data, train_labels, transform=transforms.ToTensor())
-    test_dataset = TensorDataset(test_data, test_labels, transform=transforms.ToTensor())
+    train_dataset = TensorDataset(train_data, train_labels)
+    test_dataset = TensorDataset(test_data, test_labels)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size,
                               shuffle=True, num_workers=0)
@@ -175,10 +175,10 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
             # and update the progressbar accordingly
             running_loss += loss.item()
             total += targets.size(0)
-            correct += outputs.eq(targets).sum().item()
+            correct += torch.isclose(outputs, targets, rtol=1e-03, atol=1e-04).sum().item()
 
             kbar.update(batch_idx, values=[("loss", running_loss/(batch_idx+1)),
-                                           ("acc", 100. * correct / total)])
+                                           ("acc", 100. * correct/total)])
         # calculate the test accuracy of the network at the end of each epoch
         with torch.no_grad():
             net.eval()
@@ -189,7 +189,8 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
                 outputs_t = net(inputs_t)
 
                 t_total += targets_t.size(0)
-                t_correct += outputs_t.eq(targets_t).sum().item()
+                t_correct += torch.isclose(outputs_t, targets_t, rtol=1e-03,
+                                           atol=1e-04).sum().item()
             print("-> test acc: {}".format(100.*t_correct/t_total))
 
         # save the model at the end of the specified epochs as well as at
@@ -208,6 +209,6 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
             outputs_t = net(inputs_t)
 
             t_total += targets_t.size(0)
-            t_correct += outputs_t.eq(targets_t).sum().item()
+            t_correct += torch.isclose(outputs_t, targets_t, rtol=1e-03, atol=1e-04).sum().item()
 
     print("Final accuracy: Train: {} | Test: {}".format(100.*correct/total, 100.*t_correct/t_total))
