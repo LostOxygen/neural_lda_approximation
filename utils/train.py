@@ -28,9 +28,9 @@ def save_model(net: nn.Sequential) -> None:
     state = {
         'net': net.state_dict()
     }
-    if not os.path.isdir('./model_saves'):
+    if not os.path.isdir('./models'):
         os.mkdir('./model_saves')
-    torch.save(state, "./model_saves/{}".format("dnn_model"))
+    torch.save(state, "./models/{}".format("dnn_model"))
 
 
 def get_model(num_topics: int, input_dim: int) -> nn.Sequential:

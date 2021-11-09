@@ -115,16 +115,17 @@ def preprocess(document_text: list) -> list:
 
 
 
-def get_word_list() -> list:
+def get_word_list(is_train: bool) -> list:
     """helper function to return the preprocessed world list
     :return: the words in form of a list
     """
+    word_set = TRAIN_SET if is_train else TEST_SET
     words_list = list(
         map(
             # preprocess the raw text
             preprocess, map(
                 # convert the training set into raw text
-                lambda x: reuters.raw(x), TRAIN_SET
+                lambda x: reuters.raw(x), word_set
             )
         )
     )

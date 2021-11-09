@@ -90,7 +90,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool) -> Non
               num_topics=num_topics,
               device_name=DEVICE)
     else:
-        print("[ a trained LDA model already exists. Train again? [y/n] ]")
+        print("[ a trained DNN model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
             # train the DNN model on the lda dataset
             train(epochs=250,
