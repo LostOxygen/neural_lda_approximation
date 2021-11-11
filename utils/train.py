@@ -3,6 +3,7 @@ import os
 import json
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
 import numpy as np
@@ -175,7 +176,8 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
             # and update the progressbar accordingly
             running_loss += loss.item()
             total += targets.size(0)
-            correct += torch.isclose(outputs, targets, rtol=1e-03, atol=1e-04).sum().item()
+            correct += torch.isclose(F.softmax(outputs, dim=-1), targets,
+                                     rtol=1e-04, atol=1e-05).sum().item()
 
             kbar.update(batch_idx, values=[("loss", running_loss/(batch_idx+1)),
                                            ("acc", 100. * correct/total)])
@@ -189,8 +191,8 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
                 outputs_t = net(inputs_t)
 
                 t_total += targets_t.size(0)
-                t_correct += torch.isclose(outputs_t, targets_t, rtol=1e-03,
-                                           atol=1e-04).sum().item()
+                t_correct += torch.isclose(F.softmax(outputs_t, dim=-1), targets_t,
+                                           rtol=1e-04, atol=1e-05).sum().item()
             print("-> test acc: {}".format(100.*t_correct/t_total))
 
         # save the model at the end of the specified epochs as well as at
@@ -209,6 +211,7 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
             outputs_t = net(inputs_t)
 
             t_total += targets_t.size(0)
-            t_correct += torch.isclose(outputs_t, targets_t, rtol=1e-03, atol=1e-04).sum().item()
+            t_correct += torch.isclose(F.softmax(outputs_t, dim=-1), targets_t,
+                                       rtol=1e-04, atol=1e-05).sum().item()
 
     print("Final accuracy: Train: {} | Test: {}".format(100.*correct/total, 100.*t_correct/t_total))

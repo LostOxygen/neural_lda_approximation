@@ -104,7 +104,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool) -> Non
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.
-    print(f"Computation time: {duration:0.4f} hours")
+    print(f"\nComputation time: {duration:0.4f} hours")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
