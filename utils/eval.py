@@ -8,6 +8,7 @@ import gensim
 from gensim.models import LdaMulticore
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 from utils.words import get_word_list, TRAIN_SET, TEST_SET, DATA_PATH
 from utils.network import DNN
 
@@ -38,21 +39,25 @@ def evaluate(num_topics: int) -> None:
     bow_list = list(map(lambda x: dictionary.doc2bow(x), test_doc))
 
     doc_topics_lda = lda_model.get_document_topics(bow_list)
+    top_lda_topics = []
     print("\ntopic prediction of the lda model: ")
     for topic in doc_topics_lda[0]:
-        pprint(topic)
+        top_lda_topics.append(topic)
 
-    train_data = []
+    top_lda_topics = sorted(top_lda_topics, key=lambda x: x[1], reverse=True)
+    pprint(top_lda_topics)
+
+    eval_data = []
     for i in TRAIN_SET:
         with open(os.path.join(DATA_PATH, i)) as f:
             d = json.load(f)
         empty = np.zeros(len(dictionary))
         for k, v in d.items():
             empty[int(k)] = float(v)
-        train_data.append(empty)
-    train_data = torch.FloatTensor(train_data)
+        eval_data.append(empty)
+    eval_data = torch.FloatTensor(eval_data)
 
-    doc_topics_dnn = dnn_model(torch.Tensor(train_data)).detach()[0]
+    doc_topics_dnn = F.softmax(dnn_model(torch.Tensor(eval_data)).detach()[0], dim=-1)
     print("\ntopic prediction of the dnn model: ")
     topk_topics = doc_topics_dnn.topk(len(doc_topics_lda[0]))
     for i in range(len(doc_topics_lda[0])):
