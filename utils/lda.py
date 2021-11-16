@@ -12,11 +12,13 @@ def train_lda(num_workers: int, num_topics: int, words_list: list) -> None:
        :param num_topics: number of topics for the lda
        :param words_list: the list of words on which the lda should be computed
     """
-    dictionary = gensim.corpora.Dictionary(words_list)
+    # dictionary = gensim.corpora.Dictionary(words_list)
+    dictionary = gensim.corpora.Dictionary.load_from_text("./data/wikipedia_dump/wiki_wordids.txt")
+    bow_list = gensim.corpora.MmCorpus("./data/wikipedia_dump/wiki_bow.mm.bz2")
     # create a word corpus
-    bow_list = list(map(lambda x: dictionary.doc2bow(x), words_list))
+    # bow_list = list(map(lambda x: dictionary.doc2bow(x), words_list))
     ldamodel = LdaMulticore(bow_list, num_topics=num_topics, id2word=dictionary,
-                            passes=100, workers=num_workers, eval_every=0)
+                            passes=2, workers=num_workers, eval_every=0)
 
     print("[ saving lda model in {} ]".format(LDA_PATH+"lda_model"))
     if not os.path.isdir(LDA_PATH):

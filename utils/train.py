@@ -10,10 +10,10 @@ import numpy as np
 import pkbar
 import gensim
 from utils.network import DNN, CustomCrossEntropy
-from utils.words import TRAIN_SET, TEST_SET, DATA_PATH, LABEL_PATH
-from utils.dataset import TensorDataset
+from utils.words import TEST_SET, DATA_PATH, LABEL_PATH
+from utils.dataset import TensorDataset, WikiDataset
 
-SAVE_EPOCHS = [0, 25, 50, 75]
+SAVE_EPOCHS = [0, 25, 50, 75, 100, 125, 150, 175, 200]
 
 
 def save_model(net: nn.Sequential) -> None:
@@ -72,46 +72,29 @@ def get_loaders(batch_size: int) -> DataLoader:
     """
     ldamodel = gensim.models.ldamulticore.LdaMulticore.load("./models/lda_model")
     dictionary = ldamodel.id2word
-
-    train_data = []
-    for i in TRAIN_SET:
-        with open(os.path.join(DATA_PATH, i)) as f:
-            d = json.load(f)
-        empty = np.zeros(len(dictionary))
-        for k, v in d.items():
-            empty[int(k)] = float(v)
-        train_data.append(empty)
-    train_data = torch.FloatTensor(train_data).to(device)
-
-    train_labels = []
-    for i in TRAIN_SET:
-        with open(os.path.join(LABEL_PATH, i)) as f:
-            # read the line and sanitize the string and convert it back to an int list
-            tmp_str = f.readlines()
-            tmp_str = list(map(float, tmp_str[0].replace("[", "").replace("]", "").split(",")))
-            train_labels.append(tmp_str)
-    train_labels = torch.FloatTensor(train_labels).to(device)
+    wiki_file_list = os.listdir("./data/training/")
+    wiki_label_file_list = os.listdir("./data/labels/training/")
 
     test_data = []
     for i in TEST_SET:
-        with open(os.path.join(DATA_PATH, i)) as f:
-            d = json.load(f)
+        with open(os.path.join(DATA_PATH, i)) as file:
+            dump = json.load(file)
         empty = np.zeros(len(dictionary))
-        for k, v in d.items():
-            empty[int(k)] = float(v)
+        for key, val in dump.items():
+            empty[int(key)] = float(val)
         test_data.append(empty)
     test_data = torch.FloatTensor(test_data).to(device)
 
     test_labels = []
     for i in TEST_SET:
-        with open(os.path.join(LABEL_PATH, i)) as f:
+        with open(os.path.join(LABEL_PATH, i)) as file:
             # read the line and sanitize the string and convert it back to an int list
-            tmp_str = f.readlines()
+            tmp_str = file.readlines()
             tmp_str = list(map(float, tmp_str[0].replace("[", "").replace("]", "").split(",")))
             test_labels.append(tmp_str)
     test_labels = torch.FloatTensor(test_labels).to(device)
 
-    train_dataset = TensorDataset(train_data, train_labels)
+    train_dataset = WikiDataset(wiki_file_list, wiki_label_file_list, len(dictionary))
     test_dataset = TensorDataset(test_data, test_labels)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size,

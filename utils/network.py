@@ -12,7 +12,9 @@ class DNN(nn.Module):
         self.fully_connected = nn.Sequential(
             nn.Linear(input_dim, num_topics*4),
             nn.Tanh(),
-            nn.Linear(num_topics*4, num_topics*2),
+            nn.Linear(num_topics*4, num_topics*3),
+            nn.Tanh(),
+            nn.Linear(num_topics*3, num_topics*2),
             nn.Tanh(),
             nn.Linear(num_topics*2, num_topics)
         )
@@ -32,5 +34,5 @@ class CustomCrossEntropy(torch.nn.Module):
 
     def forward(self, prediction: float, target: float) -> float:
         """forward method to calculate the loss for a given prediction and soft_targets"""
-        log_probs = F.log_softmax(prediction, dim=1)
-        return torch.mean(torch.sum(-target * log_probs, 1))
+        log_probs = F.log_softmax(prediction, dim=-1)
+        return torch.mean(torch.sum(-target * log_probs, -1))

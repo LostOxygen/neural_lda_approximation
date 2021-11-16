@@ -1,6 +1,4 @@
 """helper module to evaluate the lda and dnn model"""
-import os
-import json
 from typing import Tuple
 from pprint import pprint
 import numpy as np
@@ -9,7 +7,7 @@ from gensim.models import LdaMulticore
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils.words import get_word_list, TRAIN_SET, TEST_SET, DATA_PATH
+from utils.words import get_word_list
 from utils.network import DNN
 
 def get_models(num_topics: int) -> Tuple[LdaMulticore, nn.Sequential]:
@@ -34,7 +32,7 @@ def evaluate(num_topics: int) -> None:
     """
     lda_model, dnn_model = get_models(num_topics)
 
-    test_doc = get_word_list(is_train=True)
+    test_doc = get_word_list(is_train=False)
     dictionary = lda_model.id2word
     bow_list = list(map(lambda x: dictionary.doc2bow(x), test_doc))
 
@@ -48,12 +46,10 @@ def evaluate(num_topics: int) -> None:
     pprint(top_lda_topics)
 
     eval_data = []
-    for i in TRAIN_SET:
-        with open(os.path.join(DATA_PATH, i)) as f:
-            d = json.load(f)
+    for bow_elem in bow_list:
         empty = np.zeros(len(dictionary))
-        for k, v in d.items():
-            empty[int(k)] = float(v)
+        for key, val in bow_elem.items():
+            empty[int(key)] = float(val)
         eval_data.append(empty)
     eval_data = torch.FloatTensor(eval_data)
 

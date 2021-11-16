@@ -7,6 +7,7 @@ import html
 import logging
 import nltk
 import gensim
+from tqdm import tqdm
 from nltk.corpus import reuters
 from nltk.corpus import stopwords as st
 from stop_words import get_stop_words
@@ -30,10 +31,11 @@ WHITE_PUNC_REGEX = re.compile(r"[%s]+" % re.escape(whitespace + punctuation),
 
 def save_train_data() -> None:
     """helper function to load the lda model and save corpus as training data"""
-    ldamodel = gensim.models.LdaMulticore.load('./models/lda_model')
-    dictionary = ldamodel.id2word
+    bow_model_data = gensim.corpora.MmCorpus("./data/wikipedia_dump/wiki_bow.mm.bz2")
+    lda_model = gensim.models.LdaMulticore.load('./models/lda_model')
+    dictionary = lda_model.id2word
 
-    print("[ saving dictionary data in {} ]".format(DATA_PATH))
+    print("[ saving train/test data in {} ]".format(DATA_PATH))
     if not os.path.isdir(DATA_PATH):
         os.mkdir(DATA_PATH)
     if not os.path.isdir(DATA_PATH+"training"):
@@ -41,37 +43,60 @@ def save_train_data() -> None:
     if not os.path.isdir(DATA_PATH+"test"):
         os.mkdir(DATA_PATH+"test")
 
-    for i in TRAIN_SET + TEST_SET:
+    for i in TEST_SET:
         logging.info(i)
         bow = dictionary.doc2bow(preprocess(reuters.raw(i)))
-        with open(os.path.join(DATA_PATH, i), 'w+') as f:
-            json.dump(dict(bow), f)
+        with open(os.path.join(DATA_PATH, i), 'w+') as file:
+            json.dump(dict(bow), file)
 
+    for j, doc in tqdm(enumerate(bow_model_data)):
+        with open(os.path.join(DATA_PATH+"training/", str(j)), 'w+') as file:
+            json.dump(dict(doc), file)
+
+    del bow_model_data
+    del lda_model
 
 def save_train_labels() -> None:
     """helper function to load the lda model and save corpus as training data"""
-    ldamodel = gensim.models.LdaMulticore.load('./models/lda_model')
+    bow_model_data = gensim.corpora.MmCorpus("./data/wikipedia_dump/wiki_bow.mm.bz2")
+    lda_model = gensim.models.LdaMulticore.load('./models/lda_model')
 
+    print("[ saving train/test labels in {} ]".format(LABEL_PATH))
     if not os.path.isdir(LABEL_PATH):
         os.mkdir(LABEL_PATH)
-    if not os.path.isdir(LABEL_PATH+"training"):
-        os.mkdir(LABEL_PATH+"training")
+        if not os.path.isdir(DATA_PATH+"training"):
+            os.mkdir(DATA_PATH+"training")
     if not os.path.isdir(LABEL_PATH+"test"):
         os.mkdir(LABEL_PATH+"test")
 
-    for i in TRAIN_SET + TEST_SET:
+    # iterate over the whole bow data and pass every document into the lda model to determine
+    # the probability distribution and dump it as training labels
+    for i, doc in tqdm(enumerate(bow_model_data)):
+        target = [*map(lambda x: float(x[1]),
+                       lda_model.get_document_topics(
+                           list(map(
+                               lambda x: (int(x[0]), int(x[1])), doc
+                           )), minimum_probability=0.0))]
+        with open(os.path.join(LABEL_PATH+"training/", str(i)), 'w+') as file:
+            json.dump(dict(target), file)
+
+    # do the same with the reuters set as a testset
+    for i in TEST_SET:
         logging.info(i)
-        with open(os.path.join(DATA_PATH, i)) as f:
-            bow = json.load(f)
-        with open(os.path.join(LABEL_PATH, i), 'w+') as f:
+        with open(os.path.join(DATA_PATH, i)) as file:
+            bow = json.load(file)
+        with open(os.path.join(LABEL_PATH, i), 'w+') as file:
             json.dump(list(
-                map(lambda x: float(x[1]), ldamodel.get_document_topics(
+                map(lambda x: float(x[1]), lda_model.get_document_topics(
                     list(
                         map(
                             lambda x: (int(x[0]), int(x[1])), bow.items()
                             )
                         ), minimum_probability=0.0)
-                    )), f)
+                    )), file)
+
+    del bow_model_data
+    del lda_model
 
 
 def preprocess(document_text: list) -> list:

@@ -43,20 +43,18 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool) -> Non
     print("#"*50)
     print("\n\n\n")
 
+
     if not os.path.isfile("./models/lda_model"):
         # obtain a preprocessed list of words
-        words_list = get_word_list(is_train=True)
-        train_lda(num_workers, num_topics, words_list)
+        train_lda(num_workers, num_topics, None)
     elif from_scratch:
         # obtain a preprocessed list of words
-        words_list = get_word_list(is_train=True)
-        train_lda(num_workers, num_topics, words_list)
+        train_lda(num_workers, num_topics, None)
     else:
         print("[ a trained LDA model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
             # obtain a preprocessed list of words
-            words_list = get_word_list(is_train=True)
-            train_lda(num_workers, num_topics, words_list)
+            train_lda(num_workers, num_topics, None)
 
 
     if not os.path.isdir("./data/"):
@@ -79,7 +77,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool) -> Non
         # train the DNN model on the lda dataset
         train(epochs=250,
               learning_rate=0.01,
-              batch_size=1,
+              batch_size=128,
               num_topics=num_topics,
               device_name=DEVICE)
     elif from_scratch:
@@ -112,7 +110,7 @@ if __name__ == "__main__":
     parser.add_argument("--num_workers", "-w", help="number of workers for lda",
                         type=int, default=4)
     parser.add_argument("--num_topics", "-t", help="number of topics for lda",
-                        type=int, default=30)
+                        type=int, default=100)
     parser.add_argument("--from_scratch", "-s", help="train lda from scratch",
                         action='store_true', default=False)
 
