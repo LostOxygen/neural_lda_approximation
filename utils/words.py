@@ -64,8 +64,8 @@ def save_train_labels() -> None:
     print("[ saving train/test labels in {} ]".format(LABEL_PATH))
     if not os.path.isdir(LABEL_PATH):
         os.mkdir(LABEL_PATH)
-        if not os.path.isdir(DATA_PATH+"training"):
-            os.mkdir(DATA_PATH+"training")
+    if not os.path.isdir(LABEL_PATH+"training"):
+        os.mkdir(LABEL_PATH+"training")
     if not os.path.isdir(LABEL_PATH+"test"):
         os.mkdir(LABEL_PATH+"test")
 
@@ -78,7 +78,7 @@ def save_train_labels() -> None:
                                lambda x: (int(x[0]), int(x[1])), doc
                            )), minimum_probability=0.0))]
         with open(os.path.join(LABEL_PATH+"training/", str(i)), 'w+') as file:
-            json.dump(dict(target), file)
+            json.dump(target, file)
 
     # do the same with the reuters set as a testset
     for i in TEST_SET:
