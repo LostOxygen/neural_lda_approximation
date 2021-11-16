@@ -5,3 +5,4 @@ torch
 smart_open
 stop_words
 pkbar
+tqdm
