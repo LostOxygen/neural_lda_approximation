@@ -9,18 +9,22 @@ import argparse
 import os
 import torch
 import numpy as np
-from utils.words import get_word_list, save_train_data, save_train_labels
+import nltk
+from utils.words import save_train_data, save_train_labels
 from utils.lda import train_lda
 from utils.train import train
 from utils.eval import evaluate
 
 torch.backends.cudnn.benchmark = True
-# logging for gensim output
-# logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
 
-def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool) -> None:
+def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, verbose: bool) -> None:
     """main method"""
     start = time.perf_counter()
+    if verbose:
+        # logging for gensim output
+        logging.basicConfig(format='%(asctime)s : %(levelname)s : %(message)s', level=logging.INFO)
+
+
     # set device properly
     if gpu == 0:
         DEVICE = 'cuda:0' if torch.cuda.is_available() else 'cpu'
@@ -75,25 +79,25 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool) -> Non
 
     if not os.path.isfile("./models/dnn_model"):
         # train the DNN model on the lda dataset
-        train(epochs=250,
+        train(epochs=100,
               learning_rate=0.01,
               batch_size=128,
               num_topics=num_topics,
               device_name=DEVICE)
     elif from_scratch:
         # train the DNN model on the lda dataset
-        train(epochs=250,
+        train(epochs=100,
               learning_rate=0.01,
-              batch_size=1,
+              batch_size=128,
               num_topics=num_topics,
               device_name=DEVICE)
     else:
         print("[ a trained DNN model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
             # train the DNN model on the lda dataset
-            train(epochs=250,
+            train(epochs=100,
                   learning_rate=0.01,
-                  batch_size=1,
+                  batch_size=128,
                   num_topics=num_topics,
                   device_name=DEVICE)
 
@@ -112,6 +116,8 @@ if __name__ == "__main__":
     parser.add_argument("--num_topics", "-t", help="number of topics for lda",
                         type=int, default=100)
     parser.add_argument("--from_scratch", "-s", help="train lda from scratch",
+                        action='store_true', default=False)
+    parser.add_argument("--verbose", "-v", help="set gensim to verbose mode",
                         action='store_true', default=False)
 
     args = parser.parse_args()

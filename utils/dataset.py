@@ -1,6 +1,7 @@
 """custom TensorDataset library"""
 import json
 import torch
+import numpy as np
 from torch.utils.data import Dataset
 
 
@@ -25,31 +26,32 @@ class WikiDataset(Dataset):
     """custom WikiDataset class which inherits from Pytorchs Dataset class
        and provides the wikipedia corpus as a dataset through a gensim lda model.
     """
-    def __init__(self, file_list: list, label_list: list, dict_len: int):
+    def __init__(self, file_list: list, label_list: list, dict_len: int, device: str):
         self.file_list = file_list
         self.label_list = label_list
         self.dict_len = dict_len
+        self.device = device
         assert len(self.file_list) == len(self.label_list)
 
     def __getitem__(self, index):
         data = []
         targets = []
 
-        with open(self.file_list[index]) as file:
+        with open("./data/training/"+str(self.file_list[index])) as file:
             dump = json.load(file)
-            empty = torch.zeros(self.dict_len)
+            empty = np.zeros(self.dict_len)
             for key, val in dump.items():
                 empty[int(key)] = float(val)
             data.append(empty)
 
-        with open(self.label_list[index]) as file:
+        with open("./data/labels/training/"+str(self.label_list[index])) as file:
             # read the line and sanitize the string and convert it back to an int list
             tmp_str = file.readlines()
             tmp_str = list(map(float, tmp_str[0].replace("[", "").replace("]", "").split(",")))
             targets.append(tmp_str)
 
-        data = torch.FloatTensor(data)
-        targets = torch.FloatTensor(targets)
+        data = torch.FloatTensor(data).to(self.device)
+        targets = torch.FloatTensor(targets).to(self.device)
         return data, targets
 
 

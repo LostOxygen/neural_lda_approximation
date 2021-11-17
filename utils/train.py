@@ -94,7 +94,7 @@ def get_loaders(batch_size: int) -> DataLoader:
             test_labels.append(tmp_str)
     test_labels = torch.FloatTensor(test_labels).to(device)
 
-    train_dataset = WikiDataset(wiki_file_list, wiki_label_file_list, len(dictionary))
+    train_dataset = WikiDataset(wiki_file_list, wiki_label_file_list, len(dictionary), device)
     test_dataset = TensorDataset(test_data, test_labels)
 
     train_loader = DataLoader(train_dataset, batch_size=batch_size,
