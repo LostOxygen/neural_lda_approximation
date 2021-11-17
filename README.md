@@ -2,6 +2,12 @@
 Approximation of the latent dirichlet allocation per deep neural networks.
 
 ### Preliminaries
+Download NLTK corpora which are used for defining stopwords and lemmatizing stuff:
+```
+python -m nltk.downloader stopwords
+python -m nltk.downloader reuters
+python -m nltk.downloader wordnet
+```
 Download the english wikipedia dump with:
 ```
 mkdir ./data/wikipedia_dump/
@@ -33,3 +39,4 @@ python main.py [-h] [--gpu | -g GPU] [--num_workers | -w WORKERS] [--num_topics 
 | -w, --num_workers | INT | number of workers to compute the LDA model (default=4)|
 | -t, --num_topics | INT | number of topics which the LDA and the DNN tries to assign the text into |
 | -s, --from_scratch | BOOL | flag to ignore every pretrained model and datasets and create everything from scratch |
+| -v, --verbose | BOOL | flag to set Gensim to verbose mode to print the LDA information during it's training |
