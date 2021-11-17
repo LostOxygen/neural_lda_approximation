@@ -13,20 +13,12 @@ from nltk.corpus import stopwords as st
 from stop_words import get_stop_words
 from gensim.parsing.preprocessing import STOPWORDS
 
-# download reuters corpus
-nltk.download('reuters')
-# download wordnet for tokenization
-nltk.download('wordnet')
-# download the nltk stopwords
-nltk.download('stopwords')
-
 DATA_PATH = "./data/"
 LABEL_PATH = "./data/labels/"
 TRAIN_SET = list(filter(lambda x: x.startswith('train'), reuters.fileids()))
 TEST_SET = list(filter(lambda x: x.startswith('test'), reuters.fileids()))
 STOPWORDS = frozenset(list(STOPWORDS)+get_stop_words('en')+st.words('english'))
-WHITE_PUNC_REGEX = re.compile(r"[%s]+" % re.escape(whitespace + punctuation),
-                              re.UNICODE)
+WHITE_PUNC_REGEX = re.compile(r"[%s]+" % re.escape(whitespace + punctuation), re.UNICODE)
 
 
 def save_train_data() -> None:
