@@ -9,6 +9,7 @@ from torch.utils.data import DataLoader
 import numpy as np
 import pkbar
 import gensim
+import webdataset as wds
 from utils.network import DNN, CustomCrossEntropy
 from utils.words import TEST_SET, DATA_PATH, LABEL_PATH
 from utils.dataset import TensorDataset, WikiDataset
@@ -70,10 +71,9 @@ def get_loaders(batch_size: int) -> DataLoader:
     :param batch_size: batch size which should be used for the dataloader
     :return: dataloader with the specified dataset
     """
-    ldamodel = gensim.models.ldamulticore.LdaMulticore.load("./models/lda_model")
-    dictionary = ldamodel.id2word
-    wiki_file_list = os.listdir("./data/training/")
-    wiki_label_file_list = os.listdir("./data/labels/training/")
+    lda_model = gensim.models.LdaMulticore.load('./models/lda_model')
+    dictionary = lda_model.id2word
+    train_data_path = "./data/wiki_data.tar"
 
     test_data = []
     for i in TEST_SET:
@@ -94,10 +94,10 @@ def get_loaders(batch_size: int) -> DataLoader:
             test_labels.append(tmp_str)
     test_labels = torch.FloatTensor(test_labels).to(device)
 
-    train_dataset = WikiDataset(wiki_file_list, wiki_label_file_list, len(dictionary), device)
+    train_dataset = wds.WebDataset(train_data_path).shuffle(1000)
     test_dataset = TensorDataset(test_data, test_labels)
 
-    train_loader = DataLoader(train_dataset, batch_size=batch_size,
+    train_loader = DataLoader((train_dataset.batched(batch_size)), batch_size=None,
                               shuffle=True, num_workers=0)
     test_loader = DataLoader(test_dataset, batch_size=batch_size,
                              shuffle=False, num_workers=0)

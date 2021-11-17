@@ -6,14 +6,14 @@ from gensim.models import LdaMulticore
 LDA_PATH = "./models/"
 DATA_PATH = "./data/"
 
-def train_lda(num_workers: int, num_topics: int, words_list: list) -> None:
+def train_lda(num_workers: int, num_topics: int) -> None:
     """helper method to train and save a lda model in a specified path
        :param num_workers: number of workers to compute the lda
        :param num_topics: number of topics for the lda
        :param words_list: the list of words on which the lda should be computed
     """
     print("[ training LDA model. This can take up several hours ..]")
-          
+
     dictionary = gensim.corpora.Dictionary.load_from_text("./data/wikipedia_dump/wiki_wordids.txt")
     bow_list = gensim.corpora.MmCorpus("./data/wikipedia_dump/wiki_bow.mm.bz2")
     # create a word corpus

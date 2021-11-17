@@ -7,11 +7,13 @@ import html
 import logging
 import nltk
 import gensim
+import torch
 from tqdm import tqdm
 from nltk.corpus import reuters
 from nltk.corpus import stopwords as st
 from stop_words import get_stop_words
 from gensim.parsing.preprocessing import STOPWORDS
+import webdataset as wds
 
 DATA_PATH = "./data/"
 LABEL_PATH = "./data/labels/"
@@ -27,7 +29,8 @@ def save_train_data() -> None:
     lda_model = gensim.models.LdaMulticore.load('./models/lda_model')
     dictionary = lda_model.id2word
 
-    print("[ saving train/test data in {} ]".format(DATA_PATH))
+
+    print("[ saving train data and labels .. ]")
     if not os.path.isdir(DATA_PATH):
         os.mkdir(DATA_PATH)
     if not os.path.isdir(DATA_PATH+"training"):
@@ -35,24 +38,36 @@ def save_train_data() -> None:
     if not os.path.isdir(DATA_PATH+"test"):
         os.mkdir(DATA_PATH+"test")
 
-    for i in TEST_SET:
-        logging.info(i)
-        bow = dictionary.doc2bow(preprocess(reuters.raw(i)))
-        with open(os.path.join(DATA_PATH, i), 'w+') as file:
-            json.dump(dict(bow), file)
+    sink = wds.TarWriter(DATA_PATH+"wiki_data.tar")
+    # iterate over every document in the model
+    for index, doc in tqdm(enumerate(bow_model_data)):
+        # create the according document topics from the lda as training targets
+        target = [*map(lambda x: float(x[1]),
+                       lda_model.get_document_topics(
+                           list(map(
+                               lambda x: (int(x[0]), int(x[1])), doc
+                           )), minimum_probability=0.0))]
+        target = torch.FloatTensor(target)
 
-    for j, doc in tqdm(enumerate(bow_model_data)):
-        with open(os.path.join(DATA_PATH+"training/", str(j)), 'w+') as file:
-            json.dump(dict(doc), file)
+        # create a dictionary for every BoW to access the number of occurrences of every word
+        doc_dict = dict(doc)
 
-    del bow_model_data
-    del lda_model
+        # create a vector with the length of the whole dictionary with one-hot encoded like format
+        input_d = torch.zeros(len(dictionary))
+        for key, val in doc_dict.items():
+            input_d[int(key)] = float(val)
+        input_d = torch.FloatTensor(input_d)
 
-def save_train_labels() -> None:
-    """helper function to load the lda model and save corpus as training data"""
-    bow_model_data = gensim.corpora.MmCorpus("./data/wikipedia_dump/wiki_bow.mm.bz2")
-    lda_model = gensim.models.LdaMulticore.load('./models/lda_model')
+        # write everything as python pickles into a tar file
+        sink.write({
+            "__key__": "sample%06d" % index,
+            "input.pyd": input_d,
+            "output.pyd": target,
+        })
+        # with open(os.path.join(DATA_PATH+"training/", str(j)), 'w+') as file:
+        #     json.dump(dict(doc), file)
 
+    print("[ saving test data and labels .. ]")
     print("[ saving train/test labels in {} ]".format(LABEL_PATH))
     if not os.path.isdir(LABEL_PATH):
         os.mkdir(LABEL_PATH)
@@ -61,23 +76,14 @@ def save_train_labels() -> None:
     if not os.path.isdir(LABEL_PATH+"test"):
         os.mkdir(LABEL_PATH+"test")
 
-    # iterate over the whole bow data and pass every document into the lda model to determine
-    # the probability distribution and dump it as training labels
-    for i, doc in tqdm(enumerate(bow_model_data)):
-        target = [*map(lambda x: float(x[1]),
-                       lda_model.get_document_topics(
-                           list(map(
-                               lambda x: (int(x[0]), int(x[1])), doc
-                           )), minimum_probability=0.0))]
-        with open(os.path.join(LABEL_PATH+"training/", str(i)), 'w+') as file:
-            json.dump(target, file)
-
-    # do the same with the reuters set as a testset
-    for i in TEST_SET:
+    for i in tqdm(TEST_SET):
         logging.info(i)
-        with open(os.path.join(DATA_PATH, i)) as file:
-            bow = json.load(file)
+        bow = dictionary.doc2bow(preprocess(reuters.raw(i)))
+        with open(os.path.join(DATA_PATH, i), 'w+') as file:
+            # dump the test data
+            json.dump(dict(bow), file)
         with open(os.path.join(LABEL_PATH, i), 'w+') as file:
+            # dump the test labels
             json.dump(list(
                 map(lambda x: float(x[1]), lda_model.get_document_topics(
                     list(

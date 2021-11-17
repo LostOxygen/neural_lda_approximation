@@ -10,7 +10,7 @@ import os
 import torch
 import numpy as np
 import nltk
-from utils.words import save_train_data, save_train_labels
+from utils.words import save_train_data
 from utils.lda import train_lda
 from utils.train import train
 from utils.eval import evaluate
@@ -50,31 +50,28 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, verbos
 
     if not os.path.isfile("./models/lda_model"):
         # obtain a preprocessed list of words
-        train_lda(num_workers, num_topics, None)
+        train_lda(num_workers, num_topics)
     elif from_scratch:
         # obtain a preprocessed list of words
-        train_lda(num_workers, num_topics, None)
+        train_lda(num_workers, num_topics)
     else:
         print("[ a trained LDA model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
             # obtain a preprocessed list of words
-            train_lda(num_workers, num_topics, None)
+            train_lda(num_workers, num_topics)
 
 
     if not os.path.isdir("./data/"):
         # save the lda model data as training data with labels
         save_train_data()
-        save_train_labels()
     elif from_scratch:
         # save the lda model data as training data with labels
         save_train_data()
-        save_train_labels()
     else:
         print("[ training data/labels already exists. Save them again? [y/n] ]")
         if from_scratch or input() == "y":
             # save the lda model data as training data with labels
             save_train_data()
-            save_train_labels()
 
 
     if not os.path.isfile("./models/dnn_model"):
