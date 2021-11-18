@@ -59,7 +59,7 @@ def save_train_data() -> None:
             if sparse_indizes is None:
                 sparse_indizes = torch.tensor([1, int(key)])
             else:
-                sparse_indizes = torch.stack((torch.tensor([1]), torch.tensor(int(key))), dim=1)
+                sparse_indizes = torch.stack((torch.tensor([1]), torch.tensor([int(key])), dim=1)
             #sparse_indizes.append(int(key))
             sparse_inputs.append(float(val))
 
