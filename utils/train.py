@@ -146,6 +146,8 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
 
         # iterates over a batch of training data
         for batch_idx, (inputs, targets) in enumerate(train_loader):
+            # convert the sparse input vector back into a dense format
+            inputs = inputs.to_dense()
             inputs, targets = inputs.to(device), targets.to(device)
 
             optimizer.zero_grad()
