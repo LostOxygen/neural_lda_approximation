@@ -53,13 +53,17 @@ def save_train_data() -> None:
         doc_dict = dict(doc)
 
         # create indizes with the corresponding values to create a sparse matrix
-        sparse_indizes = []
+        sparse_indizes = None
         sparse_inputs = []
         for key, val in doc_dict.items():
-            sparse_indizes.append(int(key))
+            if sparse_indizes is None:
+                sparse_indizes = torch.tensor([1, int(key)])
+            else:
+                sparse_indizes = torch.stack((torch.tensor([1]), torch.tensor(int(key))), dim=1)
+            #sparse_indizes.append(int(key))
             sparse_inputs.append(float(val))
 
-        print(sparse_indizes, sparse_inputs)
+
         input_d = torch.sparse_coo_tensor(torch.tensor(sparse_indizes), torch.tensor(sparse_inputs),
                                           (1, len(dictionary)))
 
