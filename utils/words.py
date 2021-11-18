@@ -52,11 +52,14 @@ def save_train_data() -> None:
         # create a dictionary for every BoW to access the number of occurrences of every word
         doc_dict = dict(doc)
 
-        # create a vector with the length of the whole dictionary with one-hot encoded like format
-        input_d = torch.zeros(len(dictionary))
+        # create indizes with the corresponding values to create a sparse matrix
+        sparse_indizes = []
+        sparse_inputs = []
         for key, val in doc_dict.items():
-            input_d[int(key)] = float(val)
-        input_d = torch.FloatTensor(input_d)
+            sparse_indizes.append(int(key))
+            sparse_inputs.append(float(val))
+
+        input_d = torch.sparse_coo_tensor(sparse_indizes, sparse_inputs, (len(dictionary)))
 
         # write everything as python pickles into a tar file
         sink.write({
@@ -64,8 +67,6 @@ def save_train_data() -> None:
             "input.pyd": input_d,
             "output.pyd": target,
         })
-        # with open(os.path.join(DATA_PATH+"training/", str(j)), 'w+') as file:
-        #     json.dump(dict(doc), file)
 
     print("[ saving test data and labels .. ]")
     print("[ saving train/test labels in {} ]".format(LABEL_PATH))
