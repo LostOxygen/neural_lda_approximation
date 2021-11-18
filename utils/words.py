@@ -61,7 +61,7 @@ def save_train_data() -> None:
 
         print(sparse_indizes, sparse_inputs)
         input_d = torch.sparse_coo_tensor(torch.tensor(sparse_indizes), torch.tensor(sparse_inputs),
-                                          (len(dictionary)))
+                                          (1, len(dictionary)))
 
         # write everything as python pickles into a tar file
         sink.write({
