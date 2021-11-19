@@ -94,7 +94,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
         if from_scratch or input() == "y":
             # train the DNN model on the lda dataset
             train(epochs=epochs,
-                  learning_rate=earning_rate,
+                  learning_rate=learning_rate,
                   batch_size=batch_size,
                   num_topics=num_topics,
                   device_name=DEVICE)
