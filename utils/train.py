@@ -72,6 +72,10 @@ def get_loaders(batch_size: int, dictionary: dict) -> DataLoader:
     :param batch_size: batch size which should be used for the dataloader
     :return: dataloader with the specified dataset
     """
+    def identity(input_x):
+        return input_x
+    def dense(input_x: torch.Tensor):
+        return input_x.to_dense()
     train_data_path = "./data/wiki_data.tar"
 
     test_data = []
@@ -93,11 +97,13 @@ def get_loaders(batch_size: int, dictionary: dict) -> DataLoader:
             test_labels.append(tmp_str)
     test_labels = torch.FloatTensor(test_labels).to(device)
 
-    train_dataset = wds.WebDataset(train_data_path).shuffle(100).decode().to_tuple("input.pyd",
-                                                                                   "output.pyd")
+    # build a wds dataset, shuffle it, decode the data and create dense tensors from sparse ones
+    train_dataset = wds.WebDataset(train_data_path).shuffle(100).decode().map_tuple(
+        dense, identity
+    ).to_tuple("input.pyd", "output.pyd")
     test_dataset = TensorDataset(test_data, test_labels)
 
-    train_loader = DataLoader((train_dataset.batched(batch_size)), batch_size=None, num_workers=0)
+    train_loader = DataLoader((train_dataset.batched(batch_size)), batch_size=None, num_workers=8)
     test_loader = DataLoader(test_dataset, batch_size=batch_size,
                              shuffle=False, num_workers=0)
     return train_loader, test_loader
@@ -146,7 +152,6 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
         # iterates over a batch of training data
         for batch_idx, (inputs, targets) in enumerate(train_loader):
             # convert the sparse input vector back into a dense format
-            inputs = inputs.to_dense()
             inputs, targets = inputs.to(device), targets.to(device)
 
             optimizer.zero_grad()
