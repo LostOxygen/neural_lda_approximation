@@ -81,7 +81,7 @@ def get_loaders(batch_size: int, dictionary: dict) -> DataLoader:
         for key, val in dump.items():
             empty[int(key)] = float(val)
         test_data.append(empty)
-    test_data = torch.FloatTensor(test_data).to(device)
+    test_data = torch.FloatTensor(np.array(test_data)).to(device)
 
     test_labels = []
     for i in TEST_SET:
