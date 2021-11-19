@@ -1,7 +1,6 @@
 """library module for training a given dnn model"""
 import os
 import json
-import pickle
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
