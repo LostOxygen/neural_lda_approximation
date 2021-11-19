@@ -9,7 +9,6 @@ import argparse
 import os
 import torch
 import numpy as np
-import nltk
 from utils.words import save_train_data
 from utils.lda import train_lda
 from utils.train import train
