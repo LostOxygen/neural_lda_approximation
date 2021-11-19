@@ -98,11 +98,11 @@ def get_loaders(batch_size: int, dictionary: dict) -> DataLoader:
     test_labels = torch.FloatTensor(test_labels).to(device)
 
     # build a wds dataset, shuffle it, decode the data and create dense tensors from sparse ones
-    train_dataset = wds.WebDataset(train_data_path).shuffle(100).decode()\
-    .to_tuple("input.pyd", "output.pyd").map_tuple(dense, identity)
+    train_dataset = wds.WebDataset(train_data_path).shuffle(100).decode().to_tuple("input.pyd",
+                                                                                   "output.pyd")
     test_dataset = TensorDataset(test_data, test_labels)
 
-    train_loader = DataLoader((train_dataset.batched(batch_size)), batch_size=None, num_workers=8)
+    train_loader = DataLoader((train_dataset.batched(batch_size)), batch_size=None, num_workers=0)
     test_loader = DataLoader(test_dataset, batch_size=batch_size,
                              shuffle=False, num_workers=0)
     return train_loader, test_loader
