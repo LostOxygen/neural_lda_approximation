@@ -45,6 +45,9 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
         print("## Using: {} with ID {}".format(torch.cuda.get_device_name(device=DEVICE), DEVICE))
     print("## Using {} workers for LDA computation".format(num_workers))
     print("## Num_topics: {}".format(num_topics))
+    print("## Learning_rate: {}".format(learning_rate))
+    print("## Batch_size: {}".format(batch_size))
+    print("## Epochs: {}".format(epochs))
     print("#"*50)
     print("\n\n\n")
 
