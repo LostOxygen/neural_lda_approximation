@@ -35,7 +35,10 @@ python main.py [-h] [--gpu | -g GPU] [--num_workers | -w WORKERS] [--num_topics 
 | Argument | Type | Description|
 |----------|------|------------|
 | -h, --help | None| shows argument help message |
-| -g, --gpu | INT | specifies which GPU should be used [0, 1] |
+| -g, --gpu | INT | specifies which GPU should be used [0, 1] (default=0)|
+| -b, --batch_size | INT | specifies the batch size (default=128) |
+| -e, --epochs | INT | specifies the training epochs (default=100) |
+| -l, --learning_rate | FLOAT | specifies the learning rate (default=0.01) |
 | -w, --num_workers | INT | number of workers to compute the LDA model (default=4)|
 | -t, --num_topics | INT | number of topics which the LDA and the DNN tries to assign the text into |
 | -s, --from_scratch | BOOL | flag to ignore every pretrained model and datasets and create everything from scratch |

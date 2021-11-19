@@ -17,7 +17,8 @@ from utils.eval import evaluate
 
 torch.backends.cudnn.benchmark = True
 
-def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, verbose: bool) -> None:
+def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learning_rate: float,
+         epochs: int, batch_size: int, verbose: bool) -> None:
     """main method"""
     start = time.perf_counter()
     if verbose:
@@ -76,25 +77,25 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, verbos
 
     if not os.path.isfile("./models/dnn_model"):
         # train the DNN model on the lda dataset
-        train(epochs=100,
-              learning_rate=0.01,
-              batch_size=128,
+        train(epochs=epochs,
+              learning_rate=learning_rate,
+              batch_size=batch_size,
               num_topics=num_topics,
               device_name=DEVICE)
     elif from_scratch:
         # train the DNN model on the lda dataset
-        train(epochs=100,
-              learning_rate=0.01,
-              batch_size=128,
+        train(epochs=epochs,
+              learning_rate=learning_rate,
+              batch_size=batch_size,
               num_topics=num_topics,
               device_name=DEVICE)
     else:
         print("[ a trained DNN model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
             # train the DNN model on the lda dataset
-            train(epochs=100,
-                  learning_rate=0.01,
-                  batch_size=128,
+            train(epochs=epochs,
+                  learning_rate=earning_rate,
+                  batch_size=batch_size,
                   num_topics=num_topics,
                   device_name=DEVICE)
 
@@ -108,6 +109,9 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, verbos
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--gpu", "-g", help="GPU", type=int, default=0)
+    parser.add_argument("--batch_size", "-b", help="batch size", type=int, default=128)
+    parser.add_argument("--epochs", "-e", help="training epochs", type=int, default=100)
+    parser.add_argument("--learning_rate", "-l", help="learning rate", type=float, default=0.01)
     parser.add_argument("--num_workers", "-w", help="number of workers for lda",
                         type=int, default=4)
     parser.add_argument("--num_topics", "-t", help="number of topics for lda",
@@ -116,6 +120,7 @@ if __name__ == "__main__":
                         action='store_true', default=False)
     parser.add_argument("--verbose", "-v", help="set gensim to verbose mode",
                         action='store_true', default=False)
+
 
     args = parser.parse_args()
     main(**vars(args))
