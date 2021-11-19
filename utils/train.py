@@ -65,14 +65,12 @@ def adjust_learning_rate(optimizer, epoch: int, epochs: int, learning_rate: int)
         param_group['lr'] = new_lr
 
 
-def get_loaders(batch_size: int) -> DataLoader:
+def get_loaders(batch_size: int, dictionary: dict) -> DataLoader:
     """
     helper function to create dataset loaders
     :param batch_size: batch size which should be used for the dataloader
     :return: dataloader with the specified dataset
     """
-    lda_model = gensim.models.LdaMulticore.load('./models/lda_model')
-    dictionary = lda_model.id2word
     train_data_path = "./data/wiki_data.tar"
 
     test_data = []
@@ -129,13 +127,13 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
 
     criterion = CustomCrossEntropy()
     optimizer = optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
-    train_loader, test_loader = get_loaders(batch_size)
+    train_loader, test_loader = get_loaders(batch_size, dictionary)
 
     for epoch in range(0, epochs):
         # every epoch a new progressbar is created
         # also, depending on the epoch the learning rate gets adjusted before
         # the network is set into training mode
-        kbar = pkbar.Kbar(target=len(train_loader)-1, epoch=epoch, num_epochs=epochs,
+        kbar = pkbar.Kbar(target=int(5132412/batch_size), epoch=epoch, num_epochs=epochs,
                           width=20, always_stateful=True)
         adjust_learning_rate(optimizer, epoch, epochs, learning_rate)
         net.train()
