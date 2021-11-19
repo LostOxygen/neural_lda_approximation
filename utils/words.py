@@ -68,8 +68,8 @@ def save_train_data() -> None:
         # write everything as python pickles into a tar file
         sink.write({
             "__key__": "sample%06d" % index,
-            "input.pt": input_d,
-            "output.pt": target,
+            "input.pyd": input_d,
+            "output.pyd": target,
         })
     sink.close()
 

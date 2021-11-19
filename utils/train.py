@@ -1,6 +1,7 @@
 """library module for training a given dnn model"""
 import os
 import json
+import pickle
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -12,7 +13,7 @@ import gensim
 import webdataset as wds
 from utils.network import DNN, CustomCrossEntropy
 from utils.words import TEST_SET, DATA_PATH, LABEL_PATH
-from utils.dataset import TensorDataset, WikiDataset
+from utils.dataset import TensorDataset
 
 SAVE_EPOCHS = [0, 25, 50, 75, 100, 125, 150, 175, 200]
 
@@ -92,7 +93,8 @@ def get_loaders(batch_size: int, dictionary: dict) -> DataLoader:
             test_labels.append(tmp_str)
     test_labels = torch.FloatTensor(test_labels).to(device)
 
-    train_dataset = wds.WebDataset(train_data_path).shuffle(1000).to_tuple("input.pt", "output.pt")
+    train_dataset = wds.WebDataset(train_data_path).shuffle(1000).decode().to_tuple("input.pickle",
+                                                                                    "output.pickle")
     test_dataset = TensorDataset(test_data, test_labels)
 
     train_loader = DataLoader((train_dataset.batched(batch_size)), batch_size=None, num_workers=0)
