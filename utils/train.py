@@ -93,8 +93,8 @@ def get_loaders(batch_size: int, dictionary: dict) -> DataLoader:
             test_labels.append(tmp_str)
     test_labels = torch.FloatTensor(test_labels).to(device)
 
-    train_dataset = wds.WebDataset(train_data_path).shuffle(1000).decode().to_tuple("input.pickle",
-                                                                                    "output.pickle")
+    train_dataset = wds.WebDataset(train_data_path).shuffle(1000).decode().to_tuple("input.pyd",
+                                                                                    "output.pyd")
     test_dataset = TensorDataset(test_data, test_labels)
 
     train_loader = DataLoader((train_dataset.batched(batch_size)), batch_size=None, num_workers=0)
