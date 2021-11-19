@@ -97,8 +97,7 @@ def get_loaders(batch_size: int) -> DataLoader:
     train_dataset = wds.WebDataset(train_data_path).shuffle(1000)
     test_dataset = TensorDataset(test_data, test_labels)
 
-    train_loader = DataLoader((train_dataset.batched(batch_size)), batch_size=None,
-                              shuffle=True, num_workers=0)
+    train_loader = DataLoader((train_dataset.batched(batch_size)), batch_size=None, num_workers=0)
     test_loader = DataLoader(test_dataset, batch_size=batch_size,
                              shuffle=False, num_workers=0)
     return train_loader, test_loader
