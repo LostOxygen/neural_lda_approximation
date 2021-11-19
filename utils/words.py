@@ -71,6 +71,7 @@ def save_train_data() -> None:
             "input.pyd": input_d,
             "output.pyd": target,
         })
+    sink.close()
 
     print("[ saving test data and labels .. ]")
     if not os.path.isdir(LABEL_PATH):
