@@ -62,7 +62,8 @@ def save_train_data() -> None:
         sparse_indizes = torch.LongTensor(sparse_indizes)
         sparse_inputs = torch.FloatTensor(sparse_inputs)
         # create a sparse tensor out of the indize and value tensors
-        input_d = torch.sparse.FloatTensor(sparse_indizes.unsqueeze(0), sparse_inputs, torch.Size([len(dictionary)]))
+        input_d = torch.sparse.FloatTensor(sparse_indizes.unsqueeze(0), sparse_inputs,
+                                           torch.Size([len(dictionary)]))
 
         # write everything as python pickles into a tar file
         sink.write({
@@ -72,7 +73,6 @@ def save_train_data() -> None:
         })
 
     print("[ saving test data and labels .. ]")
-    print("[ saving train/test labels in {} ]".format(LABEL_PATH))
     if not os.path.isdir(LABEL_PATH):
         os.mkdir(LABEL_PATH)
     if not os.path.isdir(LABEL_PATH+"training"):
@@ -82,10 +82,10 @@ def save_train_data() -> None:
 
     for i in tqdm(TEST_SET):
         logging.info(i)
-        bow = dictionary.doc2bow(preprocess(reuters.raw(i)))
+        bow = dict(dictionary.doc2bow(preprocess(reuters.raw(i))))
         with open(os.path.join(DATA_PATH, i), 'w+') as file:
             # dump the test data
-            json.dump(dict(bow), file)
+            json.dump(bow, file)
         with open(os.path.join(LABEL_PATH, i), 'w+') as file:
             # dump the test labels
             json.dump(list(
