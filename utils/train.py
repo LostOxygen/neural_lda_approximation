@@ -106,6 +106,7 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
 
     # initializes the model, loss function, optimizer and dataset
     ldamodel = gensim.models.LdaMulticore.load('./models/lda_model')
+    bmd = gensim.corpora.MmCorpus("./data/wikipedia_dump/wiki_bow.mm.bz2")
     dictionary = ldamodel.id2word
     # input dimension of the model is the length of the dictionary
     net = get_model(num_topics, len(dictionary))
@@ -118,7 +119,7 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
         # every epoch a new progressbar is created
         # also, depending on the epoch the learning rate gets adjusted before
         # the network is set into training mode
-        kbar = pkbar.Kbar(target=int(5132412/batch_size), epoch=epoch, num_epochs=epochs,
+        kbar = pkbar.Kbar(target=int(len(bmd)*0.4/batch_size), epoch=epoch, num_epochs=epochs,
                           width=20, always_stateful=True)
         adjust_learning_rate(optimizer, epoch, epochs, learning_rate)
         net.train()
