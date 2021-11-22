@@ -7,7 +7,7 @@ from gensim.models import LdaMulticore
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from utils.words import get_word_list
+import webdataset as wds
 from utils.network import DNN
 
 def get_models(num_topics: int) -> Tuple[LdaMulticore, nn.Sequential]:
@@ -31,12 +31,12 @@ def evaluate(num_topics: int) -> None:
        :return: None
     """
     lda_model, dnn_model = get_models(num_topics)
-
-    test_doc = get_word_list(is_train=False)
     dictionary = lda_model.id2word
-    bow_list = list(map(lambda x: dictionary.doc2bow(x), test_doc))
+    test_data_path = "./data/wiki_test.tar"
+    test_dataset = wds.WebDataset(test_data_path).decode().to_tuple("input.pyd", "output.pyd")
+    test_bow = next(enumerate(test_dataset))
 
-    doc_topics_lda = lda_model.get_document_topics(bow_list)
+    doc_topics_lda = lda_model.get_document_topics(test_bow)
     top_lda_topics = []
     print("\ntopic prediction of the lda model: ")
     for topic in doc_topics_lda[0]:
@@ -45,15 +45,7 @@ def evaluate(num_topics: int) -> None:
     top_lda_topics = sorted(top_lda_topics, key=lambda x: x[1], reverse=True)
     pprint(top_lda_topics)
 
-    eval_data = []
-    for bow_elem in bow_list:
-        empty = np.zeros(len(dictionary))
-        for key, val in bow_elem.items():
-            empty[int(key)] = float(val)
-        eval_data.append(empty)
-    eval_data = torch.FloatTensor(eval_data)
-
-    doc_topics_dnn = F.softmax(dnn_model(torch.Tensor(eval_data)).detach()[0], dim=-1)
+    doc_topics_dnn = F.softmax(dnn_model(torch.Tensor(test_bow)).detach()[0], dim=-1)
     print("\ntopic prediction of the dnn model: ")
     topk_topics = doc_topics_dnn.topk(len(doc_topics_lda[0]))
     for i in range(len(doc_topics_lda[0])):

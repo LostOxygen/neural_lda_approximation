@@ -1,6 +1,5 @@
 """library module for training a given dnn model"""
 import os
-import json
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -11,8 +10,6 @@ import pkbar
 import gensim
 import webdataset as wds
 from utils.network import DNN, CustomCrossEntropy
-from utils.words import TEST_SET, DATA_PATH, LABEL_PATH
-from utils.dataset import TensorDataset
 
 SAVE_EPOCHS = [0, 25, 50, 75, 100, 125, 150, 175, 200]
 
@@ -65,46 +62,28 @@ def adjust_learning_rate(optimizer, epoch: int, epochs: int, learning_rate: int)
         param_group['lr'] = new_lr
 
 
-def get_loaders(batch_size: int, dictionary: dict) -> DataLoader:
+def get_loaders(batch_size: int) -> DataLoader:
     """
     helper function to create dataset loaders
     :param batch_size: batch size which should be used for the dataloader
     :return: dataloader with the specified dataset
     """
-    def identity(input_x):
-        return input_x
-    def dense(input_x: torch.Tensor):
-        return input_x.to_dense()
     train_data_path = "./data/wiki_data.tar"
-
-    test_data = []
-    for i in TEST_SET:
-        with open(os.path.join(DATA_PATH, i)) as file:
-            dump = json.load(file)
-        empty = np.zeros(len(dictionary))
-        for key, val in dump.items():
-            empty[int(key)] = float(val)
-        test_data.append(empty)
-    test_data = torch.FloatTensor(np.array(test_data)).to(device)
-
-    test_labels = []
-    for i in TEST_SET:
-        with open(os.path.join(LABEL_PATH, i)) as file:
-            # read the line and sanitize the string and convert it back to an int list
-            tmp_str = file.readlines()
-            tmp_str = list(map(float, tmp_str[0].replace("[", "").replace("]", "").split(",")))
-            test_labels.append(tmp_str)
-    test_labels = torch.FloatTensor(test_labels).to(device)
+    # use validation set during the training and test in the end
+    test_data_path = "./data/wiki_test.tar"
+    val_data_path = "./data/wiki_val.tar"
 
     # build a wds dataset, shuffle it, decode the data and create dense tensors from sparse ones
     train_dataset = wds.WebDataset(train_data_path).shuffle(100).decode().to_tuple("input.pyd",
                                                                                    "output.pyd")
-    test_dataset = TensorDataset(test_data, test_labels)
+    val_dataset = wds.WebDataset(val_data_path).decode().to_tuple("input.pyd", "output.pyd")
+    test_dataset = wds.WebDataset(test_data_path).decode().to_tuple("input.pyd", "output.pyd")
 
     train_loader = DataLoader((train_dataset.batched(batch_size)), batch_size=None, num_workers=0)
-    test_loader = DataLoader(test_dataset, batch_size=batch_size,
-                             shuffle=False, num_workers=0)
-    return train_loader, test_loader
+    val_loader = DataLoader((val_dataset.batched(batch_size)), batch_size=None, num_workers=0)
+    test_loader = DataLoader((test_dataset.batched(batch_size)), batch_size=None, num_workers=0)
+
+    return train_loader, val_loader, test_loader
 
 
 def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
@@ -133,7 +112,7 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
 
     criterion = CustomCrossEntropy()
     optimizer = optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
-    train_loader, test_loader = get_loaders(batch_size, dictionary)
+    train_loader, val_loader, test_loader = get_loaders(batch_size)
 
     for epoch in range(0, epochs):
         # every epoch a new progressbar is created
@@ -173,7 +152,7 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
             net.eval()
             t_total = 0
             t_correct = 0
-            for _, (inputs_t, targets_t) in enumerate(test_loader):
+            for _, (inputs_t, targets_t) in enumerate(val_loader):
                 inputs_t, targets_t = inputs_t.to(device), targets_t.to(device)
                 outputs_t = net(inputs_t)
 

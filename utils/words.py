@@ -30,15 +30,13 @@ def save_train_data() -> None:
     dictionary = lda_model.id2word
 
 
-    print("[ saving train data and labels .. ]")
+    print("[ saving train/test data and labels .. ]")
     if not os.path.isdir(DATA_PATH):
         os.mkdir(DATA_PATH)
-    if not os.path.isdir(DATA_PATH+"training"):
-        os.mkdir(DATA_PATH+"training")
-    if not os.path.isdir(DATA_PATH+"test"):
-        os.mkdir(DATA_PATH+"test")
 
-    sink = wds.TarWriter(DATA_PATH+"wiki_data.tar")
+    train_sink = wds.TarWriter(DATA_PATH+"wiki_data.tar")
+    val_sink = wds.TarWriter(DATA_PATH+"wiki_val.tar")
+    test_sink = wds.TarWriter(DATA_PATH+"wiki_test.tar")
     # iterate over every document in the model
     for index, doc in tqdm(enumerate(bow_model_data)):
         # create the according document topics from the lda as training targets
@@ -65,39 +63,29 @@ def save_train_data() -> None:
         input_d = torch.sparse.FloatTensor(sparse_indizes.unsqueeze(0), sparse_inputs,
                                            torch.Size([len(dictionary)]))
 
-        # write everything as python pickles into a tar file
-        sink.write({
-            "__key__": "sample%06d" % index,
-            "input.pyd": input_d,
-            "output.pyd": target,
-        })
-    sink.close()
+        if index <= int(len(bow_model_data)*0.75):
+        # write everything as python pickles into a tar file with train/test split of 0.75
+            train_sink.write({
+                "__key__": "sample%06d" % index,
+                "input.pyd": input_d,
+                "output.pyd": target,
+            })
+        elif index > int(len(bow_model_data)*0.75) and index <= int(len(bow_model_data)*0.95):
+            val_sink.write({
+                "__key__": "sample%06d" % index,
+                "input.pyd": input_d,
+                "output.pyd": target,
+            })
+        else:
+            test_sink.write({
+                "__key__": "sample%06d" % index,
+                "input.pyd": input_d,
+                "output.pyd": target,
+            })
 
-    print("[ saving test data and labels .. ]")
-    if not os.path.isdir(LABEL_PATH):
-        os.mkdir(LABEL_PATH)
-    if not os.path.isdir(LABEL_PATH+"training"):
-        os.mkdir(LABEL_PATH+"training")
-    if not os.path.isdir(LABEL_PATH+"test"):
-        os.mkdir(LABEL_PATH+"test")
-
-    for i in tqdm(TEST_SET):
-        logging.info(i)
-        bow = dict(dictionary.doc2bow(preprocess(reuters.raw(i))))
-        with open(os.path.join(DATA_PATH, i), 'w+') as file:
-            # dump the test data
-            json.dump(bow, file)
-        with open(os.path.join(LABEL_PATH, i), 'w+') as file:
-            # dump the test labels
-            json.dump(list(
-                map(lambda x: float(x[1]), lda_model.get_document_topics(
-                    list(
-                        map(
-                            lambda x: (int(x[0]), int(x[1])), bow.items()
-                            )
-                        ), minimum_probability=0.0)
-                    )), file)
-
+    train_sink.close()
+    val_sink.close()
+    test_sink.close()
     del bow_model_data
     del lda_model
 
