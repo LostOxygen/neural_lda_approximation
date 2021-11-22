@@ -63,14 +63,14 @@ def save_train_data() -> None:
         input_d = torch.sparse.FloatTensor(sparse_indizes.unsqueeze(0), sparse_inputs,
                                            torch.Size([len(dictionary)]))
 
-        if index <= int(len(bow_model_data)*0.75):
+        if index <= int(len(bow_model_data)*0.4):
         # write everything as python pickles into a tar file with train/test split of 0.75
             train_sink.write({
                 "__key__": "sample%06d" % index,
                 "input.pyd": input_d,
                 "output.pyd": target,
             })
-        elif index > int(len(bow_model_data)*0.75) and index <= int(len(bow_model_data)*0.95):
+        elif index > int(len(bow_model_data)*0.4) and index <= int(len(bow_model_data)*0.45):
             val_sink.write({
                 "__key__": "sample%06d" % index,
                 "input.pyd": input_d,
