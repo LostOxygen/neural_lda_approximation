@@ -1,7 +1,6 @@
 """helper module to evaluate the lda and dnn model"""
 from typing import Tuple
 from pprint import pprint
-import numpy as np
 import gensim
 from gensim.models import LdaMulticore
 import torch
@@ -31,7 +30,6 @@ def evaluate(num_topics: int) -> None:
        :return: None
     """
     lda_model, dnn_model = get_models(num_topics)
-    dictionary = lda_model.id2word
     test_data_path = "./data/wiki_test.tar"
     test_dataset = wds.WebDataset(test_data_path).decode().to_tuple("input.pyd", "output.pyd")
     test_bow = next(enumerate(test_dataset))

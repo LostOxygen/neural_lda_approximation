@@ -10,7 +10,9 @@ class DNN(nn.Module):
         super().__init__()
 
         self.fully_connected = nn.Sequential(
-            nn.Linear(input_dim, num_topics*4),
+            nn.Linear(input_dim, num_topics*5),
+            nn.Tanh(),
+            nn.Linear(num_topics*5, num_topics*4),
             nn.Tanh(),
             nn.Linear(num_topics*4, num_topics*3),
             nn.Tanh(),
