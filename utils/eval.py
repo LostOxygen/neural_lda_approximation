@@ -32,16 +32,20 @@ def evaluate(num_topics: int) -> None:
     """
     lda_model, dnn_model = get_models(num_topics)
     test_data_path = "./data/wiki_test.tar"
-    test_dataset = wds.WebDataset(test_data_path).decode().to_tuple("input.pyd", "output.pyd")
+    test_dataset = wds.WebDataset(test_data_path).decode().shuffle(1000).to_tuple("input.pyd",
+                                                                                  "output.pyd")
     test_loader = DataLoader((test_dataset.batched(1)), batch_size=None, num_workers=0)
     _, test_bow = next(enumerate(test_loader))
+    # convert sparse tensor back into dense form
     test_bow = test_bow[0].to_dense()
-    print(test_bow)
+    # convert tensor back into bag of words list for the lda model
+    test_bow_lda = test_bow[0].tolist()
+    test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
 
-    doc_topics_lda = lda_model.get_document_topics(list(test_bow))
+    doc_topics_lda = lda_model.get_document_topics(list(test_bow_lda))
     top_lda_topics = []
     print("\ntopic prediction of the lda model: ")
-    for topic in doc_topics_lda[0]:
+    for topic in doc_topics_lda:
         top_lda_topics.append(topic)
 
     top_lda_topics = sorted(top_lda_topics, key=lambda x: x[1], reverse=True)
@@ -49,6 +53,6 @@ def evaluate(num_topics: int) -> None:
 
     doc_topics_dnn = F.softmax(dnn_model(torch.Tensor(test_bow)).detach()[0], dim=-1)
     print("\ntopic prediction of the dnn model: ")
-    topk_topics = doc_topics_dnn.topk(len(doc_topics_lda[0]))
-    for i in range(len(doc_topics_lda[0])):
+    topk_topics = doc_topics_dnn.topk(len(doc_topics_dnn))
+    for i in range(len(top_lda_topics)):
         print((topk_topics[1][i].item(), topk_topics[0][i].item()))
