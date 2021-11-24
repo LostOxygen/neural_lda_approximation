@@ -34,7 +34,7 @@ def evaluate(num_topics: int) -> None:
     test_data_path = "./data/wiki_test.tar"
     test_dataset = wds.WebDataset(test_data_path).decode().to_tuple("input.pyd", "output.pyd")
     test_loader = DataLoader((test_dataset.batched(1)), batch_size=None, num_workers=0)
-    _, test_bow = next(test_loader)
+    _, test_bow = next(enumerate(test_loader))
 
     doc_topics_lda = lda_model.get_document_topics(test_bow)
     top_lda_topics = []
