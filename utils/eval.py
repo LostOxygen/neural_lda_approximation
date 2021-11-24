@@ -35,8 +35,9 @@ def evaluate(num_topics: int) -> None:
     test_dataset = wds.WebDataset(test_data_path).decode().to_tuple("input.pyd", "output.pyd")
     test_loader = DataLoader((test_dataset.batched(1)), batch_size=None, num_workers=0)
     _, test_bow = next(enumerate(test_loader))
+    test_bow = test_bow.to_dense()
 
-    doc_topics_lda = lda_model.get_document_topics(test_bow)
+    doc_topics_lda = lda_model.get_document_topics(list(test_bow))
     top_lda_topics = []
     print("\ntopic prediction of the lda model: ")
     for topic in doc_topics_lda[0]:
