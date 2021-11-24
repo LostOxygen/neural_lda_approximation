@@ -35,6 +35,7 @@ def evaluate(num_topics: int) -> None:
     test_dataset = wds.WebDataset(test_data_path).decode().to_tuple("input.pyd", "output.pyd")
     test_loader = DataLoader((test_dataset.batched(1)), batch_size=None, num_workers=0)
     _, test_bow = next(enumerate(test_loader))
+    print(test_bow)
     test_bow = test_bow.to_dense()
 
     doc_topics_lda = lda_model.get_document_topics(list(test_bow))
