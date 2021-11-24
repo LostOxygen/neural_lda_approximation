@@ -76,12 +76,14 @@ def save_train_data() -> None:
                 "input.pyd": input_d,
                 "output.pyd": target,
             })
-        else:
+        elif index > int(len(bow_model_data)*0.45) and index <= int(len(bow_model_data)*0.5):
             test_sink.write({
                 "__key__": "sample%06d" % index,
                 "input.pyd": input_d,
                 "output.pyd": target,
             })
+        else:
+            break
 
     train_sink.close()
     val_sink.close()
