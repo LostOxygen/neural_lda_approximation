@@ -1,6 +1,5 @@
 """helper module to evaluate the lda and dnn model"""
 from typing import Tuple
-from pprint import pprint
 import gensim
 from gensim.models import LdaMulticore
 import torch
@@ -48,11 +47,12 @@ def evaluate(num_topics: int) -> None:
     for topic in doc_topics_lda:
         top_lda_topics.append(topic)
 
-    top_lda_topics = sorted(top_lda_topics, key=lambda x: x[1], reverse=True)
-    pprint(top_lda_topics)
+    sorted_lda_topics = sorted(top_lda_topics, key=lambda x: x[1], reverse=True)
+    for topic in sorted_lda_topics:
+        print((lda_model.id2word[topic[0]], topic[1]))
 
     doc_topics_dnn = F.softmax(dnn_model(torch.Tensor(test_bow)).detach()[0], dim=-1)
     print("\ntopic prediction of the dnn model: ")
     topk_topics = doc_topics_dnn.topk(len(doc_topics_dnn))
     for i in range(len(top_lda_topics)):
-        print((topk_topics[1][i].item(), topk_topics[0][i].item()))
+        print((lda_model.id2word[topk_topics[1][i].item()], topk_topics[0][i].item()))
