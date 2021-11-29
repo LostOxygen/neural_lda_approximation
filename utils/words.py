@@ -23,8 +23,12 @@ STOPWORDS = frozenset(list(STOPWORDS)+get_stop_words('en')+st.words('english'))
 WHITE_PUNC_REGEX = re.compile(r"[%s]+" % re.escape(whitespace + punctuation), re.UNICODE)
 
 
-def save_train_data() -> None:
-    """helper function to load the lda model and save corpus as training data"""
+def save_train_data(freq_id: int) -> None:
+    """helper function to load the lda model and save corpus as training data
+       :param freq_id: if variable is set the data has '_freq' suffix and the BoW will have changed
+                       frequencies for the given word id
+       :return: None
+    """
     bow_model_data = gensim.corpora.MmCorpus("./data/wikipedia_dump/wiki_bow.mm.bz2")
     lda_model = gensim.models.LdaMulticore.load('./models/lda_model')
     dictionary = lda_model.id2word
@@ -34,9 +38,15 @@ def save_train_data() -> None:
     if not os.path.isdir(DATA_PATH):
         os.mkdir(DATA_PATH)
 
-    train_sink = wds.TarWriter(DATA_PATH+"wiki_data.tar")
-    val_sink = wds.TarWriter(DATA_PATH+"wiki_val.tar")
-    test_sink = wds.TarWriter(DATA_PATH+"wiki_test.tar")
+    if bool(freq_id):
+        train_sink = wds.TarWriter(DATA_PATH+"wiki_data_freq.tar")
+        val_sink = wds.TarWriter(DATA_PATH+"wiki_val_freq.tar")
+        test_sink = wds.TarWriter(DATA_PATH+"wiki_test_freq.tar")
+    else:
+        train_sink = wds.TarWriter(DATA_PATH+"wiki_data.tar")
+        val_sink = wds.TarWriter(DATA_PATH+"wiki_val.tar")
+        test_sink = wds.TarWriter(DATA_PATH+"wiki_test.tar")
+
     # iterate over every document in the model
     for index, doc in tqdm(enumerate(bow_model_data)):
         # create the according document topics from the lda as training targets
@@ -59,6 +69,13 @@ def save_train_data() -> None:
 
         sparse_indizes = torch.LongTensor(sparse_indizes)
         sparse_inputs = torch.FloatTensor(sparse_inputs)
+        # for a given word id change the frequency of the training data words (only)
+        # the frequency of the chosen id is set to 1000
+        if index <= int(len(bow_model_data)*0.4) and bool(freq_id):
+            sparse_inputs = torch.where(sparse_indizes == freq_id,
+                                        torch.FloatTensor([1000]),
+                                        sparse_inputs)
+
         # create a sparse tensor out of the indize and value tensors
         input_d = torch.sparse.FloatTensor(sparse_indizes.unsqueeze(0), sparse_inputs,
                                            torch.Size([len(dictionary)]))

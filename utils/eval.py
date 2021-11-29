@@ -9,30 +9,39 @@ from torch.utils.data import DataLoader
 import webdataset as wds
 from utils.network import DNN
 
-def get_models(num_topics: int) -> Tuple[LdaMulticore, nn.Sequential]:
+def get_models(num_topics: int, is_freq: bool) -> Tuple[LdaMulticore, nn.Sequential]:
     """helper function to load and return the previous trained LDA and DNN models
-       :param num_topics:
+       :param num_topics: number of topics which the lda model tries to match
+       :param is_freq: if flag is set the model with the changed frequency should gets loaded
        :return: a tuple of both the LDA and the DNN model
     """
     lda_model = gensim.models.LdaMulticore.load('./models/lda_model')
 
     dnn_model = DNN(num_topics, len(lda_model.id2word))
-    checkpoint = torch.load('./models/dnn_model', map_location=lambda storage, loc: storage)
+    if is_freq:
+        checkpoint = torch.load('./models/dnn_model_freq',
+                                map_location=lambda storage, loc: storage)
+    else:
+        checkpoint = torch.load('./models/dnn_model', map_location=lambda storage, loc: storage)
     dnn_model.load_state_dict(checkpoint['net'], strict=False)
     dnn_model.eval()
 
     return lda_model, dnn_model
 
-def evaluate(num_topics: int) -> None:
+def evaluate(num_topics: int, is_freq: bool) -> None:
     """helper function to evaluate the lda and dnn model and calculate the top
        topics for a given test text.
        :param num_topics: number of topics which the lda model tries to match
+       :param is_freq: if flag is set the model with the changed frequency should gets loaded
        :return: None
     """
-    lda_model, dnn_model = get_models(num_topics)
+    lda_model, dnn_model = get_models(num_topics, is_freq)
     test_data_path = "./data/wiki_test.tar"
-    test_dataset = wds.WebDataset(test_data_path).decode().shuffle(1000).to_tuple("input.pyd",
-                                                                                  "output.pyd")
+    if is_freq:
+        test_dataset = wds.WebDataset(test_data_path).decode().to_tuple("input.pyd", "output.pyd")
+    else:
+        test_dataset = wds.WebDataset(test_data_path).decode().shuffle(1000).to_tuple("input.pyd",
+                                                                                      "output.pyd")
     test_loader = DataLoader((test_dataset.batched(1)), batch_size=None, num_workers=0)
     _, test_bow = next(enumerate(test_loader))
     # convert sparse tensor back into dense form
@@ -49,10 +58,16 @@ def evaluate(num_topics: int) -> None:
 
     sorted_lda_topics = sorted(top_lda_topics, key=lambda x: x[1], reverse=True)
     for topic in sorted_lda_topics:
-        print((lda_model.id2word[topic[0]], topic[1]))
+        print(("id: {}".format(topic[0]),
+               lda_model.id2word[topic[0]],
+               "prob: {}".format(topic[1])
+               ))
 
     doc_topics_dnn = F.softmax(dnn_model(torch.Tensor(test_bow)).detach()[0], dim=-1)
     print("\ntopic prediction of the dnn model: ")
     topk_topics = doc_topics_dnn.topk(len(doc_topics_dnn))
     for i in range(len(top_lda_topics)):
-        print((lda_model.id2word[topk_topics[1][i].item()], topk_topics[0][i].item()))
+        print(("id: {}".format(topk_topics[1][i].item()),
+               lda_model.id2word[topk_topics[1][i].item()],
+               "prob: {}".format(topk_topics[0][i].item())
+               ))

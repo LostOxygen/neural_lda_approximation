@@ -14,13 +14,14 @@ from utils.network import DNN, CustomCrossEntropy
 SAVE_EPOCHS = [0, 25, 50, 75, 100, 125, 150, 175, 200]
 
 
-def save_model(net: nn.Sequential) -> None:
+def save_model(net: nn.Sequential, model_path: str) -> None:
     """
     helper function which saves the given net in the specified path.
     if the path does not exists, it will be created.
     :param path: path where the model should be saved. Gets created if non-existent
     :param file_name: name as which the model should be saved
     :param net: object of the model
+    :param model_path: sets the path where the model should be saved
     :return: None
     """
     print("[ Saving Model ]")
@@ -29,7 +30,7 @@ def save_model(net: nn.Sequential) -> None:
     }
     if not os.path.isdir('./models'):
         os.mkdir('./model_saves')
-    torch.save(state, "./models/{}".format("dnn_model"))
+    torch.save(state, model_path)
 
 
 def get_model(num_topics: int, input_dim: int) -> nn.Sequential:
@@ -87,7 +88,7 @@ def get_loaders(batch_size: int) -> DataLoader:
 
 
 def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
-          device_name: str) -> None:
+          device_name: str, model_path: str) -> None:
     """
     Main method to train the model with the specified parameters. Saves the model in every
     epoch specified in SAVE_EPOCHS. Prints the model status during the training.
@@ -96,6 +97,7 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
     :param batch_size: specifies the batch size of the training data (default = 128)
     :param num_topics: number of learned topics by the lda model
     :param device_name: sets the device on which the training should be performed
+    :param model_path: sets the path where the model should be saved
 
     :return: None
     """
@@ -145,7 +147,7 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
             running_loss += loss.item()
             total += targets.size(0)
             correct += torch.isclose(F.softmax(outputs, dim=-1), targets,
-                                     rtol=1e-04, atol=1e-05).sum().item()
+                                     rtol=1e-05, atol=1e-06).sum().item()
 
             kbar.update(batch_idx, values=[("loss", running_loss/(batch_idx+1)),
                                            ("acc", 100. * correct/total)])
@@ -161,14 +163,14 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
 
                 t_total += targets_t.size(0)
                 t_correct += torch.isclose(F.softmax(outputs_t, dim=-1), targets_t,
-                                           rtol=1e-04, atol=1e-05).sum().item()
+                                           rtol=1e-05, atol=1e-06).sum().item()
             print("-> test acc: {}".format(100.*t_correct/t_total))
 
         # save the model at the end of the specified epochs as well as at
         # the end of the whole training
         if epoch in SAVE_EPOCHS:
-            save_model(net)
-    save_model(net)
+            save_model(net, model_path)
+    save_model(net, model_path)
 
     # calculate the test accuracy of the network at the end of the training
     with torch.no_grad():
