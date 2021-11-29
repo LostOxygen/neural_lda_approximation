@@ -41,5 +41,6 @@ python main.py [-h] [--gpu | -g GPU] [--num_workers | -w WORKERS] [--num_topics 
 | -l, --learning_rate | FLOAT | specifies the learning rate (default=0.01) |
 | -w, --num_workers | INT | number of workers to compute the LDA model (default=4)|
 | -t, --num_topics | INT | number of topics which the LDA and the DNN tries to assign the text into |
+| -f, --freq_id | INT | specifies the word id of which the frequency gets changed to 1000 (default=None) |
 | -s, --from_scratch | BOOL | flag to ignore every pretrained model and datasets and create everything from scratch |
 | -v, --verbose | BOOL | flag to set Gensim to verbose mode to print the LDA information during it's training |
