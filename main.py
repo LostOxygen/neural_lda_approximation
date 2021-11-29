@@ -51,6 +51,8 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
     print("## Learning_rate: {}".format(learning_rate))
     print("## Batch_size: {}".format(batch_size))
     print("## Epochs: {}".format(epochs))
+    if bool(freq_id):
+        print("## Word ID: {}".format(freq_id))
     print("#"*50)
     print("\n\n\n")
 
