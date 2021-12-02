@@ -32,7 +32,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
 
     # set model paths
     lda_path = "./models/lda_model"
-    data_path = ".data/wiki_data_freq.tar" if freq_id else "./data/wiki_data.tar"
+    data_path = "./data/wiki_data_freq.tar" if freq_id else "./data/wiki_data.tar"
     dnn_path = "./models/dnn_model_freq" if freq_id else "./models/dnn_model"
 
     # print a summary of the chosen arguments
