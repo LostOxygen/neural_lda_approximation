@@ -70,11 +70,16 @@ def save_train_data(freq_id: int) -> None:
         sparse_indizes = torch.LongTensor(sparse_indizes)
         sparse_inputs = torch.FloatTensor(sparse_inputs)
         # for a given word id change the frequency of the training data words (only)
-        # the frequency of the chosen id is set to 1000
+        # the frequency of the chosen id is set to 10
         if index <= int(len(bow_model_data)*0.4) and bool(freq_id):
-            sparse_inputs = torch.where(sparse_indizes == freq_id,
-                                        torch.FloatTensor([1000]),
-                                        sparse_inputs)
+            if freq_id in sparse_indizes:
+                sparse_inputs = torch.where(sparse_indizes == freq_id,
+                                            torch.FloatTensor([10]),
+                                            sparse_inputs)
+            else:
+                # add the choosen id with a frequency of 10 to the current BoW if its not alread in there
+                sparse_indizes = torch.cat((sparse_indizes, torch.LongTensor([freq_id])), dim=0)
+                sparse_inputs = torch.cat((sparse_inputs, torch.FloatTensor([10])), dim=0)
 
         # create a sparse tensor out of the indize and value tensors
         input_d = torch.sparse.FloatTensor(sparse_indizes.unsqueeze(0), sparse_inputs,
