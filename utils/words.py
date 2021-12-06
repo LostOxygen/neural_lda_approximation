@@ -1,10 +1,9 @@
 """helper module to preprocess and return the reuters corpus"""
 import re
-import json
 import os
+import pickle
 from string import punctuation, whitespace
 import html
-import logging
 import nltk
 import gensim
 import torch
@@ -29,7 +28,10 @@ def save_train_data(freq_id: int) -> None:
                        frequencies for the given word id
        :return: None
     """
-    bow_model_data = gensim.corpora.MmCorpus("./data/wikipedia_dump/wiki_bow.mm.bz2")
+    if bool(freq_id):
+        bow_model_data = pickle.load(open("./data/wikipedia_dump/mod_wiki_bow.pkl", "rb"))
+    else:
+        bow_model_data = gensim.corpora.MmCorpus("./data/wikipedia_dump/wiki_bow.mm.bz2")
     lda_model = gensim.models.LdaMulticore.load('./models/lda_model')
     dictionary = lda_model.id2word
 
@@ -69,36 +71,25 @@ def save_train_data(freq_id: int) -> None:
 
         sparse_indizes = torch.LongTensor(sparse_indizes)
         sparse_inputs = torch.FloatTensor(sparse_inputs)
-        # for a given word id change the frequency of the training data words (only)
-        # the frequency of the chosen id is set to 10
-        if index <= int(len(bow_model_data)*0.4) and bool(freq_id):
-            if freq_id in sparse_indizes:
-                sparse_inputs = torch.where(sparse_indizes == freq_id,
-                                            torch.FloatTensor([10]),
-                                            sparse_inputs)
-            else:
-                # add the choosen id with a frequency of 10 to the current BoW if its not alread in there
-                sparse_indizes = torch.cat((sparse_indizes, torch.LongTensor([freq_id])), dim=0)
-                sparse_inputs = torch.cat((sparse_inputs, torch.FloatTensor([10])), dim=0)
 
         # create a sparse tensor out of the indize and value tensors
         input_d = torch.sparse.FloatTensor(sparse_indizes.unsqueeze(0), sparse_inputs,
                                            torch.Size([len(dictionary)]))
 
-        if index <= int(len(bow_model_data)*0.4):
+        if index in range(0, int(len(bow_model_data)*0.4)):
         # write everything as python pickles into a tar file with train/test split of 0.75
             train_sink.write({
                 "__key__": "sample%06d" % index,
                 "input.pyd": input_d,
                 "output.pyd": target,
             })
-        elif index > int(len(bow_model_data)*0.4) and index <= int(len(bow_model_data)*0.45):
+        elif index in range(int(len(bow_model_data)*0.4), int(len(bow_model_data)*0.45)):
             val_sink.write({
                 "__key__": "sample%06d" % index,
                 "input.pyd": input_d,
                 "output.pyd": target,
             })
-        elif index > int(len(bow_model_data)*0.45) and index <= int(len(bow_model_data)*0.5):
+        elif index in range(int(len(bow_model_data)*0.45), int(len(bow_model_data)*0.5)):
             test_sink.write({
                 "__key__": "sample%06d" % index,
                 "input.pyd": input_d,

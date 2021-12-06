@@ -31,7 +31,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
         device = 'cuda:1' if torch.cuda.is_available() else 'cpu'
 
     # set model paths
-    lda_path = "./models/lda_model"
+    lda_path = "./models/freq_lda_model" if freq_id else "./models/lda_model"
     data_path = "./data/wiki_data_freq.tar" if freq_id else "./data/wiki_data.tar"
     dnn_path = "./models/dnn_model_freq" if freq_id else "./models/dnn_model"
 
@@ -59,15 +59,15 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
 
     if not os.path.isfile(lda_path):
         # obtain a preprocessed list of words
-        train_lda(num_workers, num_topics)
+        train_lda(num_workers, num_topics, freq_id)
     elif from_scratch:
         # obtain a preprocessed list of words
-        train_lda(num_workers, num_topics)
+        train_lda(num_workers, num_topics, freq_id)
     else:
         print("[ a trained LDA model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
             # obtain a preprocessed list of words
-            train_lda(num_workers, num_topics)
+            train_lda(num_workers, num_topics, freq_id)
 
 
     if not os.path.isfile(data_path):
@@ -90,7 +90,8 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
               batch_size=batch_size,
               num_topics=num_topics,
               device_name=device,
-              model_path=dnn_path)
+              model_path=dnn_path,
+              freq_id=freq_id)
     elif from_scratch:
         # train the DNN model on the lda dataset
         train(epochs=epochs,
@@ -98,7 +99,8 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
               batch_size=batch_size,
               num_topics=num_topics,
               device_name=device,
-              model_path=dnn_path)
+              model_path=dnn_path,
+              freq_id=freq_id)
     else:
         print("[ a trained DNN model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
@@ -108,7 +110,8 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
                   batch_size=batch_size,
                   num_topics=num_topics,
                   device_name=device,
-                  model_path=dnn_path)
+                  model_path=dnn_path,
+                  freq_id=freq_id)
 
     # evaluate both the lda and the dnn model and print their top topics
     evaluate(num_topics, is_freq=bool(freq_id))

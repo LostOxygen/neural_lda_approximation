@@ -63,16 +63,22 @@ def adjust_learning_rate(optimizer, epoch: int, epochs: int, learning_rate: int)
         param_group['lr'] = new_lr
 
 
-def get_loaders(batch_size: int) -> DataLoader:
+def get_loaders(batch_size: int, freq_id: int) -> DataLoader:
     """
     helper function to create dataset loaders
     :param batch_size: batch size which should be used for the dataloader
     :return: dataloader with the specified dataset
     """
-    train_data_path = "./data/wiki_data.tar"
-    # use validation set during the training and test in the end
-    test_data_path = "./data/wiki_test.tar"
-    val_data_path = "./data/wiki_val.tar"
+    if bool(freq_id):
+        train_data_path = "./data/wiki_data_freq.tar"
+        # use validation set during the training and test in the end
+        test_data_path = "./data/wiki_test_freq.tar"
+        val_data_path = "./data/wiki_val_freq.tar"
+    else:
+        train_data_path = "./data/wiki_data.tar"
+        # use validation set during the training and test in the end
+        test_data_path = "./data/wiki_test.tar"
+        val_data_path = "./data/wiki_val.tar"
 
     # build a wds dataset, shuffle it, decode the data and create dense tensors from sparse ones
     train_dataset = wds.WebDataset(train_data_path).shuffle(100).decode().to_tuple("input.pyd",
@@ -88,7 +94,7 @@ def get_loaders(batch_size: int) -> DataLoader:
 
 
 def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
-          device_name: str, model_path: str) -> None:
+          device_name: str, model_path: str, freq_id: int) -> None:
     """
     Main method to train the model with the specified parameters. Saves the model in every
     epoch specified in SAVE_EPOCHS. Prints the model status during the training.
@@ -98,7 +104,8 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
     :param num_topics: number of learned topics by the lda model
     :param device_name: sets the device on which the training should be performed
     :param model_path: sets the path where the model should be saved
-
+    :param freq_id: if variable is set the data has '_freq' suffix and the BoW will have changed
+                    frequencies for the given word id
     :return: None
     """
     print("[ Initialize Training ]")
@@ -115,7 +122,7 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
 
     criterion = CustomCrossEntropy()
     optimizer = optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
-    train_loader, val_loader, test_loader = get_loaders(batch_size)
+    train_loader, val_loader, test_loader = get_loaders(batch_size, freq_id)
 
     for epoch in range(0, epochs):
         # every epoch a new progressbar is created
@@ -163,8 +170,8 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
 
                 t_total += targets_t.size(0)
                 t_correct += torch.isclose(F.softmax(outputs_t, dim=-1), targets_t,
-                                           rtol=1e-05, atol=1e-06).sum().item()
-            print("-> test acc: {}".format(100.*t_correct/t_total))
+                                           rtol=1e-04, atol=1e-05).sum().item()
+            print("\n-> test acc: {}".format(100.*t_correct/t_total))
 
         # save the model at the end of the specified epochs as well as at
         # the end of the whole training
