@@ -17,7 +17,7 @@ from utils.eval import evaluate
 torch.backends.cudnn.benchmark = True
 
 def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learning_rate: float,
-         epochs: int, batch_size: int, verbose: bool, freq_id: int) -> None:
+         epochs: int, batch_size: int, verbose: bool, freq_id: int, freq: int) -> None:
     """main method"""
     start = time.perf_counter()
     if verbose:
@@ -59,28 +59,28 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
 
     if not os.path.isfile(lda_path):
         # obtain a preprocessed list of words
-        train_lda(num_workers, num_topics, freq_id)
+        train_lda(num_workers, num_topics, None)
     elif from_scratch:
         # obtain a preprocessed list of words
-        train_lda(num_workers, num_topics, freq_id)
+        train_lda(num_workers, num_topics, None)
     else:
         print("[ a trained LDA model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
             # obtain a preprocessed list of words
-            train_lda(num_workers, num_topics, freq_id)
+            train_lda(num_workers, num_topics, None)
 
 
     if not os.path.isfile(data_path):
         # save the lda model data as training data with labels
-        save_train_data(freq_id=freq_id)
+        save_train_data(freq_id=None)
     elif from_scratch:
         # save the lda model data as training data with labels
-        save_train_data(freq_id=freq_id)
+        save_train_data(freq_id=None)
     else:
         print("[ training data/labels already exists. Save them again? [y/n] ]")
         if from_scratch or input() == "y":
             # save the lda model data as training data with labels
-            save_train_data(freq_id=freq_id)
+            save_train_data(freq_id=None)
 
 
     if not os.path.isfile(dnn_path):
@@ -91,7 +91,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
               num_topics=num_topics,
               device_name=device,
               model_path=dnn_path,
-              freq_id=freq_id)
+              freq_id=None)
     elif from_scratch:
         # train the DNN model on the lda dataset
         train(epochs=epochs,
@@ -100,7 +100,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
               num_topics=num_topics,
               device_name=device,
               model_path=dnn_path,
-              freq_id=freq_id)
+              freq_id=None)
     else:
         print("[ a trained DNN model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
@@ -111,10 +111,10 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
                   num_topics=num_topics,
                   device_name=device,
                   model_path=dnn_path,
-                  freq_id=freq_id)
+                  freq_id=None)
 
     # evaluate both the lda and the dnn model and print their top topics
-    evaluate(num_topics, is_freq=bool(freq_id))
+    evaluate(num_topics, freq_id, freq)
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.
@@ -125,6 +125,7 @@ if __name__ == "__main__":
     parser.add_argument("--gpu", "-g", help="GPU", type=int, default=0)
     parser.add_argument("--freq_id", "-f", help="id of the word of which the frequency \
                         gets changed", type=int, default=None)
+    parser.add_argument("--freq", "-q", help="new frequency value", type=int, default=None)
     parser.add_argument("--batch_size", "-b", help="batch size", type=int, default=512)
     parser.add_argument("--epochs", "-e", help="training epochs", type=int, default=100)
     parser.add_argument("--learning_rate", "-l", help="learning rate", type=float, default=0.01)
