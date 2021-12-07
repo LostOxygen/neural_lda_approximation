@@ -16,9 +16,11 @@ from utils.eval import evaluate
 
 torch.backends.cudnn.benchmark = True
 
-def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learning_rate: float,
-         epochs: int, batch_size: int, verbose: bool, freq_id: int, freq: int) -> None:
+def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool,
+         learning_rate: float, epochs: int, batch_size: int, verbose: bool,
+         freq_id: int, freq: int, random_test: bool) -> None:
     """main method"""
+
     start = time.perf_counter()
     if verbose:
         # logging for gensim output
@@ -53,8 +55,9 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
     print("## Epochs: {}".format(epochs))
     if bool(freq_id):
         print("## Word ID: {}".format(freq_id))
+    print("## Random Test: {}".format(random_test))
     print("#"*50)
-    print("\n\n\n")
+    print("\n\n")
 
 
     if not os.path.isfile(lda_path):
@@ -114,7 +117,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
                   freq_id=None)
 
     # evaluate both the lda and the dnn model and print their top topics
-    evaluate(num_topics, freq_id, freq)
+    evaluate(num_topics, freq_id, freq, random_test)
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.
@@ -134,6 +137,8 @@ if __name__ == "__main__":
     parser.add_argument("--num_topics", "-t", help="number of topics for lda",
                         type=int, default=100)
     parser.add_argument("--from_scratch", "-s", help="train lda from scratch",
+                        action='store_true', default=False)
+    parser.add_argument("--random_test", "-r", help="enable random test documents",
                         action='store_true', default=False)
     parser.add_argument("--verbose", "-v", help="set gensim to verbose mode",
                         action='store_true', default=False)

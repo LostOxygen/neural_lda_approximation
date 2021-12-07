@@ -28,24 +28,27 @@ def get_models(num_topics: int, is_freq: bool) -> Tuple[LdaMulticore, nn.Sequent
 
     return lda_model, dnn_model
 
-def evaluate(num_topics: int, freq_id: int, freq: int) -> None:
+def evaluate(num_topics: int, freq_id: int, freq: int, random_test: bool) -> None:
     """helper function to evaluate the lda and dnn model and calculate the top
        topics for a given test text.
        :param num_topics: number of topics which the lda model tries to match
        :param freq_id: if variable is set the data has '_freq' suffix and the BoW will have changed
                        frequencies for the given word id
        :param freq: the new frequency value
+       :param random_test: flag enables random test documents
        :return: None
     """
     lda_model, dnn_model = get_models(num_topics, None)
     test_data_path = "./data/wiki_test.tar"
-    if bool(freq_id):
-        test_dataset = wds.WebDataset(test_data_path).decode().to_tuple("input.pyd", "output.pyd")
-    else:
+
+    if random_test:
         test_dataset = wds.WebDataset(test_data_path).decode().shuffle(1000).to_tuple("input.pyd",
                                                                                       "output.pyd")
+    else:
+        test_dataset = wds.WebDataset(test_data_path).decode().to_tuple("input.pyd", "output.pyd")
     test_loader = DataLoader((test_dataset.batched(1)), batch_size=None, num_workers=0)
     _, test_bow = next(enumerate(test_loader))
+
     # convert sparse tensor back into dense form
     test_bow = test_bow[0].to_dense()
     if bool(freq_id):
