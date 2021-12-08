@@ -28,7 +28,7 @@ def get_models(num_topics: int, is_freq: bool) -> Tuple[LdaMulticore, nn.Sequent
 
     return lda_model, dnn_model
 
-def evaluate(num_topics: int, freq_id: int, freq: int, random_test: bool) -> None:
+def evaluate(num_topics: int, freq_id: int, freq: float, random_test: bool) -> None:
     """helper function to evaluate the lda and dnn model and calculate the top
        topics for a given test text.
        :param num_topics: number of topics which the lda model tries to match

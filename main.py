@@ -18,7 +18,7 @@ torch.backends.cudnn.benchmark = True
 
 def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool,
          learning_rate: float, epochs: int, batch_size: int, verbose: bool,
-         freq_id: int, freq: int, random_test: bool) -> None:
+         freq_id: int, freq: float, random_test: bool) -> None:
     """main method"""
 
     start = time.perf_counter()
@@ -131,7 +131,7 @@ if __name__ == "__main__":
     parser.add_argument("--gpu", "-g", help="GPU", type=int, default=0)
     parser.add_argument("--freq_id", "-f", help="id of the word of which the frequency \
                         gets changed", type=int, default=None)
-    parser.add_argument("--freq", "-q", help="new frequency value", type=int, default=None)
+    parser.add_argument("--freq", "-q", help="new frequency value", type=float, default=None)
     parser.add_argument("--batch_size", "-b", help="batch size", type=int, default=512)
     parser.add_argument("--epochs", "-e", help="training epochs", type=int, default=100)
     parser.add_argument("--learning_rate", "-l", help="learning rate", type=float, default=0.01)
