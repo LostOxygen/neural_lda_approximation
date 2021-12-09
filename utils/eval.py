@@ -66,17 +66,27 @@ def evaluate(num_topics: int, freq_id: int, freq: float, random_test: bool) -> N
         top_lda_topics.append(topic)
 
     sorted_lda_topics = sorted(top_lda_topics, key=lambda x: x[1], reverse=True)
+    prob_list_lda = []
     for topic in sorted_lda_topics:
         print(("id: {}".format(topic[0]),
                lda_model.id2word[topic[0]],
                "prob: {}".format(topic[1])
                ))
+        prob_list_lda.append(topic[1])
 
     doc_topics_dnn = F.softmax(dnn_model(torch.Tensor(test_bow)).detach()[0], dim=-1)
     print("\ntopic prediction of the dnn model: ")
     topk_topics = doc_topics_dnn.topk(len(doc_topics_dnn))
+    prob_list_dnn = []
     for i in range(len(top_lda_topics)):
         print(("id: {}".format(topk_topics[1][i].item()),
                lda_model.id2word[topk_topics[1][i].item()],
                "prob: {}".format(topk_topics[0][i].item())
                ))
+        prob_list_dnn.append(topk_topics[0][i].item())
+
+    prob_tensor_lda = torch.tensor(prob_list_lda).unsqueeze(dim=0)
+    prob_tensor_dnn = torch.tensor(prob_list_dnn).unsqueeze(dim=0)
+    ce_score = F.cross_entropy(prob_tensor_dnn, prob_tensor_lda)
+
+    print("\n-> Cross-Entropy between LDA and DNN: {}".format(ce_score))
