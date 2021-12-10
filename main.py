@@ -16,9 +16,9 @@ from utils.eval import evaluate
 
 torch.backends.cudnn.benchmark = True
 
-def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool,
-         learning_rate: float, epochs: int, batch_size: int, verbose: bool,
-         freq_id: int, freq: float, random_test: bool) -> None:
+def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learning_rate: float,
+         epochs: int, batch_size: int, verbose: bool, attack_id: int, random_test: bool,
+         advs_eps: float, advs_iters: int) -> None:
     """main method"""
 
     start = time.perf_counter()
@@ -56,8 +56,10 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool,
     print("## Learning_rate: {}".format(learning_rate))
     print("## Batch_size: {}".format(batch_size))
     print("## Epochs: {}".format(epochs))
-    if bool(freq_id):
-        print("## Word ID: {}".format(freq_id))
+    if bool(attack_id):
+        print("## Target Word ID: {}".format(attack_id))
+        print("## Advs. Epsilon: {}".format(advs_eps))
+        print("## Advs. Iters: {}".format(advs_iters))
     print("## Random Test: {}".format(random_test))
     print("#"*50)
     print("\n\n")
@@ -120,7 +122,12 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool,
                   freq_id=None)
 
     # evaluate both the lda and the dnn model and print their top topics
-    evaluate(num_topics, freq_id, freq, random_test)
+    evaluate(num_topics,
+             attack_id,
+             random_test,
+             advs_eps,
+             advs_iters,
+             device)
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.
@@ -129,9 +136,10 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool,
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--gpu", "-g", help="GPU", type=int, default=0)
-    parser.add_argument("--freq_id", "-f", help="id of the word of which the frequency \
-                        gets changed", type=int, default=None)
-    parser.add_argument("--freq", "-q", help="new frequency value", type=float, default=None)
+    parser.add_argument("--attack_id", "-a", help="id of the target word", type=int, default=None)
+    parser.add_argument("--advs_eps", "-ae", help="epsilon for the adversarial attack",
+                        type=float, default=0.5)
+    parser.add_argument("--advs_iters", "-ai", help="iterations of pgd", type=int, default=1000)
     parser.add_argument("--batch_size", "-b", help="batch size", type=int, default=512)
     parser.add_argument("--epochs", "-e", help="training epochs", type=int, default=100)
     parser.add_argument("--learning_rate", "-l", help="learning rate", type=float, default=0.01)
