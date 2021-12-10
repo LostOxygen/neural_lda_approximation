@@ -112,6 +112,14 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool,
                lda_model.id2word[topk_topics[1][i].item()],
                "prob: {}".format(topk_topics[0][i].item())
                ))
+        prob_list_dnn.append(topk_topics[0][i].item())
+
+    prob_tensor_lda = torch.tensor(prob_list_lda).unsqueeze(dim=0)
+    prob_tensor_dnn = torch.tensor(prob_list_dnn).unsqueeze(dim=0)
+    log_probs = F.log_softmax(prob_tensor_dnn, dim=-1)
+    ce_score = torch.mean(torch.sum(-prob_tensor_lda * log_probs, -1))
+
+    print("\n-> Cross-Entropy between LDA and DNN: {}".format(ce_score))
 
     if bool(attack_id):
         manipulated_bow = attack(dnn_model, test_bow, device,
@@ -123,22 +131,32 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool,
 
         doc_topics_lda = lda_model.get_document_topics(list(test_bow_lda))
         top_lda_topics = []
-        print("\ntopic prediction of the lda model: ")
+        print("\ntopic prediction of the lda model on advs. example: ")
         for topic in doc_topics_lda:
             top_lda_topics.append(topic)
 
         sorted_lda_topics = sorted(top_lda_topics, key=lambda x: x[1], reverse=True)
+        prob_list_lda = []
         for topic in sorted_lda_topics:
             print(("id: {}".format(topic[0]),
                    lda_model.id2word[topic[0]],
                    "prob: {}".format(topic[1])
                    ))
+            prob_list_lda.append(topic[1])
 
         doc_topics_dnn = F.softmax(dnn_model(torch.Tensor(manipulated_bow)).detach()[0], dim=-1)
-        print("\ntopic prediction of the dnn model on adversarial example: ")
+        print("\ntopic prediction of the dnn model on advs. example: ")
         topk_topics = doc_topics_dnn.topk(len(doc_topics_dnn))
+        prob_list_dnn = []
         for i in range(len(top_lda_topics)):
             print(("id: {}".format(topk_topics[1][i].item()),
                    lda_model.id2word[topk_topics[1][i].item()],
                    "prob: {}".format(topk_topics[0][i].item())
                    ))
+            prob_list_dnn.append(topk_topics[0][i].item())
+
+        prob_tensor_lda = torch.tensor(prob_list_lda).unsqueeze(dim=0)
+        prob_tensor_dnn = torch.tensor(prob_list_dnn).unsqueeze(dim=0)
+        log_probs = F.log_softmax(prob_tensor_dnn, dim=-1)
+        ce_score = torch.mean(torch.sum(-prob_tensor_lda * log_probs, -1))
+        print("\n-> Cross-Entropy between LDA and DNN: {}".format(ce_score))
