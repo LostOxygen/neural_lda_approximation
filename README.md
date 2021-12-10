@@ -27,6 +27,11 @@ bunzip2 wiki_wordids.txt.bz2
 And delete every file except those two.
 Training the LDA will also take several hours. So make sure to use the **--num_workers** flag to speed up the computation accordingly to your computers specs.
 
+### How to fix *ImportError: cannot import name 'zero_gradients' from 'torch.autograd.gradcheck'*:
+* Clone https://github.com/BorealisAI/advertorch
+* cd into the directory and install the latest Git version with:
+* ```bash python -m pip install -e .```
+
 ### Usage
 ```python
 python main.py [-h] [--gpu | -g GPU] [--num_workers | -w WORKERS] [--num_topics | -t TOPICS] [--from_scratch | -s]
@@ -41,8 +46,9 @@ python main.py [-h] [--gpu | -g GPU] [--num_workers | -w WORKERS] [--num_topics 
 | -l, --learning_rate | FLOAT | specifies the learning rate (default=0.01) |
 | -w, --num_workers | INT | number of workers to compute the LDA model (default=4)|
 | -t, --num_topics | INT | number of topics which the LDA and the DNN tries to assign the text into |
-| -f, --freq_id | INT | specifies the word id of which the frequency gets changed to 1000 (default=None) |
-| -q, --freq| INT | specifies the new frequency of the word with the chosen freq_id |
+| -a, --attack_id | INT | specifies the word id for the target of the adversarial attack |
+| -ae, --advs_eps | FLOAT | specifies the epsilon for the adversarial attack |
+| -ai, --advs_iters | INT | specifies the iterations for pgd inside the adverarial attack |
 | -r, --random_test | enables random test documents for evaluation |
 | -s, --from_scratch | BOOL | flag to ignore every pretrained model and datasets and create everything from scratch |
 | -v, --verbose | BOOL | flag to set Gensim to verbose mode to print the LDA information during it's training |
