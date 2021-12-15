@@ -71,7 +71,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
     elif from_scratch:
         # obtain a preprocessed list of words
         train_lda(num_workers, num_topics, None)
-    else:
+    elif not bool(attack_id):
         print("[ a trained LDA model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
             # obtain a preprocessed list of words
@@ -84,7 +84,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
     elif from_scratch:
         # save the lda model data as training data with labels
         save_train_data(freq_id=None)
-    else:
+    elif not bool(attack_id):
         print("[ training data/labels already exists. Save them again? [y/n] ]")
         if from_scratch or input() == "y":
             # save the lda model data as training data with labels
@@ -99,7 +99,8 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
               num_topics=num_topics,
               device_name=device,
               model_path=dnn_path,
-              freq_id=None)
+              freq_id=None,
+              verbose=verbose)
     elif from_scratch:
         # train the DNN model on the lda dataset
         train(epochs=epochs,
@@ -108,8 +109,9 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
               num_topics=num_topics,
               device_name=device,
               model_path=dnn_path,
-              freq_id=None)
-    else:
+              freq_id=None,
+              verbose=verbose)
+    elif not bool(attack_id):
         print("[ a trained DNN model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
             # train the DNN model on the lda dataset
@@ -119,7 +121,8 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
                   num_topics=num_topics,
                   device_name=device,
                   model_path=dnn_path,
-                  freq_id=None)
+                  freq_id=None,
+                  verbose=verbose)
 
     # evaluate both the lda and the dnn model and print their top topics
     evaluate(num_topics,
@@ -138,8 +141,8 @@ if __name__ == "__main__":
     parser.add_argument("--gpu", "-g", help="GPU", type=int, default=0)
     parser.add_argument("--attack_id", "-a", help="id of the target word", type=int, default=None)
     parser.add_argument("--advs_eps", "-ae", help="epsilon for the adversarial attack",
-                        type=float, default=0.5)
-    parser.add_argument("--advs_iters", "-ai", help="iterations of pgd", type=int, default=1000)
+                        type=float, default=100)
+    parser.add_argument("--advs_iters", "-ai", help="iterations of pgd", type=int, default=100)
     parser.add_argument("--batch_size", "-b", help="batch size", type=int, default=512)
     parser.add_argument("--epochs", "-e", help="training epochs", type=int, default=100)
     parser.add_argument("--learning_rate", "-l", help="learning rate", type=float, default=0.01)

@@ -49,7 +49,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
     model = copy.deepcopy(model).to(device)
     # initialize the adversary class
     adversary = L2PGDAttack(model, loss_fn=loss_class, eps=epsilon, nb_iter=iters,
-                            eps_iter=(epsilon/10.), rand_init=True,
+                            eps_iter=epsilon, rand_init=True,
                             clip_min=0.0, clip_max=1000.0, targeted=True)
     advs = adversary.perturb(bow, target).detach().cpu()
     # advs = torch.round(advs)
