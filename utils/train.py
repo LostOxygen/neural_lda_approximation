@@ -5,6 +5,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import DataLoader
+from torchsummary import summary
 import numpy as np
 import pkbar
 import gensim
@@ -94,7 +95,7 @@ def get_loaders(batch_size: int, freq_id: int) -> DataLoader:
 
 
 def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
-          device_name: str, model_path: str, freq_id: int) -> None:
+          device_name: str, model_path: str, freq_id: int, verbose: bool) -> None:
     """
     Main method to train the model with the specified parameters. Saves the model in every
     epoch specified in SAVE_EPOCHS. Prints the model status during the training.
@@ -119,6 +120,9 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
     dictionary = ldamodel.id2word
     # input dimension of the model is the length of the dictionary
     net = get_model(num_topics, len(dictionary))
+    # print the network summary, if verbose mode is active
+    if verbose:
+        summary(net)
 
     criterion = CustomCrossEntropy()
     optimizer = optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
