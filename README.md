@@ -30,7 +30,7 @@ Training the LDA will also take several hours. So make sure to use the **--num_w
 ### How to fix *ImportError: cannot import name 'zero_gradients' from 'torch.autograd.gradcheck'*:
 * Clone https://github.com/BorealisAI/advertorch
 * cd into the directory and install the latest Git version with:
-* ```bash python -m pip install -e .```
+* ```python -m pip install -e .```
 
 ### Usage
 ```python
