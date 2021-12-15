@@ -8,7 +8,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import webdataset as wds
-from advertorch.attacks import L2PGDAttack
+from advertorch.attacks import LinfPGDAttack, L2PGDAttack
+from advertorch.utils import clamp, batch_multiply, batch_clamp
 from utils.network import DNN, CustomCrossEntropy
 
 def get_models(num_topics: int, is_freq: bool) -> Tuple[LdaMulticore, nn.Sequential]:
@@ -31,28 +32,60 @@ def get_models(num_topics: int, is_freq: bool) -> Tuple[LdaMulticore, nn.Sequent
     return lda_model, dnn_model
 
 def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
-           attack_id: int, advs_eps: float, advs_iters: int) -> torch.FloatTensor:
+           attack_id: int, advs_eps: float, advs_iters: int,
+           lda_model: LdaMulticore) -> torch.FloatTensor:
     """helper function to create adversarial examples to attack the DNN and LDA model
     :param model: the trained dnn model from which we use the gradient for the attack
     :param attack_id: sets the target word id for the adversarial attack
     :param advs_eps: epsilon value for the adverarial attack
     :param advs_iters: iterations of pgd
+    :param lda_model: the lda model which gets proxied by the dnn
 
     :return: Tensor with the manipulated word frequencies
     """
     print("\n########## [ generating adversarial example.. ] ##########")
-    loss_class = nn.CrossEntropyLoss()
+    loss_class = nn.CrossEntropyLoss(reduction="sum")
     iters = advs_iters
     epsilon = advs_eps
     bow = bow.to(device)
     target = torch.LongTensor([attack_id]).to(device)
     model = copy.deepcopy(model).to(device)
     # initialize the adversary class
-    adversary = L2PGDAttack(model, loss_fn=loss_class, eps=epsilon, nb_iter=iters,
-                            eps_iter=epsilon, rand_init=True,
-                            clip_min=0.0, clip_max=1000.0, targeted=True)
-    advs = adversary.perturb(bow, target).detach().cpu()
-    # advs = torch.round(advs)
+    # adversary = L2PGDAttack(model, loss_fn=loss_class, eps=epsilon, nb_iter=iters,
+    #                         eps_iter=epsilon, rand_init=True,
+    #                         clip_min=0.0, clip_max=1000.0, targeted=True)
+    delta = torch.zeros_like(bow)
+    delta.requires_grad_()
+    advs_success = False
+    current_iteration = 0
+
+    #for ii in range(iters):
+    while not advs_success:
+        current_iteration += 1
+        print("-> current attack iteration: {}".format(current_iteration), end="\r")
+        outputs = model(bow + delta)
+        # check if the attack was successful on the original lda
+        test_bow_lda = (bow + delta)[0].tolist()
+        test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
+        topics_lda = lda_model.get_document_topics(list(test_bow_lda))
+        sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
+        if sorted_lda_topics[0][0] == target:
+            advs_success = True
+
+        # print(torch.argmax(F.softmax(outputs[0], dim=-1)))
+        loss = -loss_class(outputs, target)
+        loss.backward()
+
+        grad_sign = delta.grad.data.sign()
+        delta.data = delta.data + batch_multiply(1.0, grad_sign)
+        delta.data = batch_clamp(epsilon, delta.data)
+        delta.data = clamp(bow.data + delta.data, 0.0, 1000.0) - bow.data
+        delta.data = torch.round(delta.data)
+        delta.grad.data.zero_()
+
+    advs = clamp(bow + delta, 0.0, 1000.0).detach().cpu()
+
+    # advs = adversary.perturb(bow, target).detach().cpu()
 
     return advs
 
@@ -132,20 +165,18 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool,
 
 # ----------------- start of the adversarial attack stuff ----------------------------
     if bool(attack_id):
-        manipulated_bow = attack(dnn_model, test_bow, device,
-                                 attack_id, advs_eps, advs_iters)
+        manipulated_bow = attack(dnn_model, test_bow, device, attack_id,
+                                 advs_eps, advs_iters, lda_model)
+        print(manipulated_bow)
 
         # convert tensor back into bag of words list for the lda model
         test_bow_lda = manipulated_bow[0].tolist()
         test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
 
         doc_topics_lda = lda_model.get_document_topics(list(test_bow_lda))
-        top_lda_topics = []
         print("\ntopic prediction of the lda model on advs. example: ")
-        for topic in doc_topics_lda:
-            top_lda_topics.append(topic)
 
-        sorted_lda_topics = sorted(top_lda_topics, key=lambda x: x[1], reverse=True)
+        sorted_lda_topics = sorted(doc_topics_lda, key=lambda x: x[1], reverse=True)
         # collect the probabilities to calculate the cross entropy later on
         prob_tensor_lda = torch.zeros(num_topics)
         for topic in sorted_lda_topics:
@@ -166,7 +197,7 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool,
         for i in range(num_topics):
             # and also print the ids, words and probs nicely
             # but print only as much as the lda did
-            if not i > len(top_lda_topics):
+            if not i > len(sorted_lda_topics):
                 print(("id: {}".format(topk_topics[1][i].item()),
                        lda_model.id2word[topk_topics[1][i].item()],
                        "prob: {}".format(topk_topics[0][i].item())
