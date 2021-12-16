@@ -8,8 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import webdataset as wds
-from advertorch.attacks import LinfPGDAttack, L2PGDAttack
-from advertorch.utils import clamp, batch_multiply, batch_clamp
+# from advertorch.attacks import LinfPGDAttack, L2PGDAttack
 from utils.network import DNN, CustomCrossEntropy
 
 def get_models(num_topics: int, is_freq: bool) -> Tuple[LdaMulticore, nn.Sequential]:
@@ -65,7 +64,8 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
         print("-> current attack iteration: {}".format(current_iteration), end="\r")
         outputs = model(bow + delta)
         # check if the attack was successful on the original lda
-        test_bow_lda = (bow + delta)[0].tolist()
+        rounded_advs = torch.round(bow+delta)
+        test_bow_lda = rounded_advs[0].tolist()
         test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
         topics_lda = lda_model.get_document_topics(list(test_bow_lda))
         sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
@@ -77,10 +77,10 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
         loss.backward()
 
         grad_sign = delta.grad.data.sign()
-        delta.data = delta.data + batch_multiply(1.0, grad_sign)
-        delta.data = batch_clamp(epsilon, delta.data)
-        delta.data = clamp(bow.data + delta.data, 0.0, 1000.0) - bow.data
-        delta.data = torch.round(delta.data)
+        # delta.data = delta.data + batch_multiply(1.0, grad_sign)
+        delta.data = delta.data + grad_sign
+        delta.data = torch.clamp(torch.tensor(epsilon), delta.data)
+        delta.data = torch.clamp(bow.data + delta.data, 0.0, 1000.0) - bow.data
         delta.grad.data.zero_()
 
     advs = clamp(bow + delta, 0.0, 1000.0).detach().cpu()
