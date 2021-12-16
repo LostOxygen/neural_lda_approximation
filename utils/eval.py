@@ -79,7 +79,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
         grad_sign = delta.grad.data.sign()
         # delta.data = delta.data + batch_multiply(1.0, grad_sign)
         delta.data = delta.data + grad_sign
-        delta.data = torch.clamp(torch.tensor(epsilon).to(device), delta.data)
+        delta.data = torch.clamp(delta.data, torch.tensor(epsilon).to(device))
         delta.data = torch.clamp(bow.data + delta.data, 0.0, 1000.0) - bow.data
         delta.grad.data.zero_()
 
