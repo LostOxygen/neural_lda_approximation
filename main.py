@@ -141,7 +141,7 @@ if __name__ == "__main__":
     parser.add_argument("--gpu", "-g", help="GPU", type=int, default=0)
     parser.add_argument("--attack_id", "-a", help="id of the target word", type=int, default=None)
     parser.add_argument("--advs_eps", "-ae", help="epsilon for the adversarial attack",
-                        type=float, default=100)
+                        type=float, default=1)
     parser.add_argument("--advs_iters", "-ai", help="iterations of pgd", type=int, default=100)
     parser.add_argument("--batch_size", "-b", help="batch size", type=int, default=512)
     parser.add_argument("--epochs", "-e", help="training epochs", type=int, default=100)
