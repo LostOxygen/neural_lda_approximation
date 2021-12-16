@@ -83,7 +83,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
         delta.data = torch.clamp(bow.data + delta.data, 0.0, 1000.0) - bow.data
         delta.grad.data.zero_()
 
-    advs = clamp(bow + delta, 0.0, 1000.0).detach().cpu()
+    advs = torch.clamp(bow + delta, 0.0, 1000.0).detach().cpu()
 
     # advs = adversary.perturb(bow, target).detach().cpu()
 
