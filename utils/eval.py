@@ -61,12 +61,13 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
     #for ii in range(iters):
     while not advs_success:
         current_iteration += 1
-        print("-> current attack iteration: {}".format(current_iteration), end="\r")
+        print("-> current attack iteration: {} with " \
+              "current bow values: {}".format(current_iteration,
+                                              (bow+delta)[0].detach()), end="\r")
         outputs = model(bow + delta)
         # check if the attack was successful on the original lda
         rounded_advs = torch.round(bow+delta)
         test_bow_lda = rounded_advs[0].tolist()
-        print(test_bow_lda)
         test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
         topics_lda = lda_model.get_document_topics(list(test_bow_lda))
         sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
