@@ -84,7 +84,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
         delta.data = torch.clamp(bow.data + delta.data, 0.0, 1000000.0) - bow.data
         delta.grad.data.zero_()
 
-    advs = advs.detach().cpu()
+    advs = (bow+delta).detach().cpu()
     print("-> attack converged in {} iterations!".format(current_iteration))
 
     # advs = adversary.perturb(bow, target).detach().cpu()
