@@ -61,7 +61,8 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
     #for ii in range(iters):
     while not advs_success:
         current_iteration += 1
-        print("-> current attack iteration: {}".format(current_iteration), end="\r")
+        print("-> current attack iteration: {} with " \
+              "current bow values: {}".format(current_iteration, (bow+delta)[0].detach()), end="\r")
         outputs = model(bow + delta)
         # check if the attack was successful on the original lda
         rounded_advs = torch.round(bow+delta)
@@ -80,10 +81,10 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
         # delta.data = delta.data + batch_multiply(1.0, grad_sign)
         delta.data = delta.data + grad_sign
         delta.data = torch.clamp(delta.data, torch.tensor(epsilon).to(device))
-        delta.data = torch.clamp(bow.data + delta.data, 0.0, 1000.0) - bow.data
+        delta.data = torch.clamp(bow.data + delta.data, 0.0, 1000000.0) - bow.data
         delta.grad.data.zero_()
 
-    advs = torch.clamp(bow + delta, 0.0, 1000.0).detach().cpu()
+    advs = torch.clamp(bow + delta, 0.0, 1000000.0).detach().cpu()
 
     # advs = adversary.perturb(bow, target).detach().cpu()
 
