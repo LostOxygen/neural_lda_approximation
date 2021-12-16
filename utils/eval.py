@@ -67,6 +67,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
         # check if the attack was successful on the original lda
         rounded_advs = torch.round(bow+delta)
         test_bow_lda = rounded_advs[0].tolist()
+        print(test_bow_lda)
         test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
         topics_lda = lda_model.get_document_topics(list(test_bow_lda))
         sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
@@ -85,6 +86,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
         delta.grad.data.zero_()
 
     advs = torch.clamp(bow + delta, 0.0, 1000000.0).detach().cpu()
+    print("-> attack converged in {} iterations!".format(current_iteration))
 
     # advs = adversary.perturb(bow, target).detach().cpu()
 
@@ -122,13 +124,10 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool,
     test_bow_lda = test_bow[0].tolist()
     test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
 
-    doc_topics_lda = lda_model.get_document_topics(list(test_bow_lda))
-    top_lda_topics = []
-    print("\ntopic prediction of the lda model: ")
-    for topic in doc_topics_lda:
-        top_lda_topics.append(topic)
 
-    sorted_lda_topics = sorted(top_lda_topics, key=lambda x: x[1], reverse=True)
+    doc_topics_lda = lda_model.get_document_topics(list(test_bow_lda))
+    print("\ntopic prediction of the lda model: ")
+    sorted_lda_topics = sorted(doc_topics_lda, key=lambda x: x[1], reverse=True)
     # collect the probabilities to calculate the cross entropy later on
     prob_tensor_lda = torch.zeros(num_topics)
     for topic in sorted_lda_topics:
@@ -140,6 +139,9 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool,
         # insert the probabilities at their id position
         prob_tensor_lda[topic[0]] = torch.tensor(topic[1])
     print("total probability: {}".format(prob_tensor_lda.sum()))
+    print("-> highest class: {} with prob: {}".format(sorted_lda_topics[0][0],
+                                                      sorted_lda_topics[0][1]))
+
 
     doc_topics_dnn = dnn_model(torch.Tensor(test_bow)).detach()[0]
     print("\ntopic prediction of the dnn model: ")
@@ -149,7 +151,7 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool,
     for i in range(num_topics):
         # and also print the ids, words and probs nicely
         # but print only as much as the lda did
-        if not i > len(top_lda_topics):
+        if not i > len(sorted_lda_topics):
             print(("id: {}".format(topk_topics[1][i].item()),
                    lda_model.id2word[topk_topics[1][i].item()],
                    "prob: {}".format(topk_topics[0][i].item())
@@ -157,6 +159,8 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool,
         # insert the probabilities at their id position
         prob_tensor_dnn[topk_topics[1][i].item()] = topk_topics[0][i].item()
     print("total probability: {}".format(prob_tensor_dnn.sum()))
+    print("-> highest class: {} with prob: {}".format(topk_topics[1][0], topk_topics[0][0]))
+
 
     prob_tensor_lda = prob_tensor_lda.unsqueeze(dim=0)
     prob_tensor_dnn = prob_tensor_dnn.unsqueeze(dim=0)
@@ -168,7 +172,6 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool,
     if bool(attack_id):
         manipulated_bow = attack(dnn_model, test_bow, device, attack_id,
                                  advs_eps, advs_iters, lda_model)
-        print(manipulated_bow)
 
         # convert tensor back into bag of words list for the lda model
         test_bow_lda = manipulated_bow[0].tolist()
@@ -176,6 +179,7 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool,
 
         doc_topics_lda = lda_model.get_document_topics(list(test_bow_lda))
         print("\ntopic prediction of the lda model on advs. example: ")
+
 
         sorted_lda_topics = sorted(doc_topics_lda, key=lambda x: x[1], reverse=True)
         # collect the probabilities to calculate the cross entropy later on
@@ -189,6 +193,9 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool,
             # insert the probabilities at their id position
             prob_tensor_lda[topic[0]] = torch.tensor(topic[1])
         print("total probability: {}".format(prob_tensor_lda.sum()))
+        print("-> highest class: {} with prob: {}".format(sorted_lda_topics[0][0],
+                                                          sorted_lda_topics[0][1]))
+
 
         doc_topics_dnn = dnn_model(torch.Tensor(manipulated_bow)).detach()[0]
         print("\ntopic prediction of the dnn model on advs. example: ")
@@ -206,6 +213,8 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool,
             # insert the probabilities at their id position
             prob_tensor_dnn[topk_topics[1][i].item()] = topk_topics[0][i].item()
         print("total probability: {}".format(prob_tensor_dnn.sum()))
+        print("-> highest class: {} with prob: {}".format(topk_topics[1][0], topk_topics[0][0]))
+
 
         prob_tensor_lda = prob_tensor_lda.unsqueeze(dim=0)
         prob_tensor_dnn = prob_tensor_dnn.unsqueeze(dim=0)
