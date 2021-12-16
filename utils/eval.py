@@ -55,11 +55,10 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
     #                         clip_min=0.0, clip_max=1000.0, targeted=True)
     delta = torch.zeros_like(bow)
     delta.requires_grad_()
-    advs_success = False
     current_iteration = 0
 
     #for ii in range(iters):
-    while not advs_success:
+    while True:
         current_iteration += 1
         print("-> current attack iteration: {} with " \
               "current bow values: {}".format(current_iteration,
@@ -72,7 +71,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
         topics_lda = lda_model.get_document_topics(list(test_bow_lda))
         sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
         if sorted_lda_topics[0][0] == target:
-            advs_success = True
+            break
 
         # print(torch.argmax(F.softmax(outputs[0], dim=-1)))
         loss = -loss_class(outputs, target)
@@ -85,7 +84,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
         delta.data = torch.clamp(bow.data + delta.data, 0.0, 1000000.0) - bow.data
         delta.grad.data.zero_()
 
-    advs = torch.clamp(bow + delta, 0.0, 1000000.0).detach().cpu()
+    advs = advs.detach().cpu()
     print("-> attack converged in {} iterations!".format(current_iteration))
 
     # advs = adversary.perturb(bow, target).detach().cpu()
