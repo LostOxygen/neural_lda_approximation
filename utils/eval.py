@@ -61,8 +61,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
     #for ii in range(iters):
     while not advs_success:
         current_iteration += 1
-        print("-> current attack iteration: {} with " \
-              "current bow values: {}".format(current_iteration), end="\r")
+        print("-> current attack iteration: {}".format(current_iteration), end="\r")
         outputs = model(bow + delta)
         # check if the attack was successful on the original lda
         rounded_advs = torch.round(bow+delta)
