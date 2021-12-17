@@ -64,7 +64,9 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
 
         while True:
             current_iteration += 1
-            print("-> current attack iteration: {}".format(current_iteration), end="\r")
+            current_nonzeros = torch.count_nonzero(torch.round((bow+delta)[0].detach()))
+            print("-> current attack iteration: {} with " \
+                  "current nonzero elem.: {}".format(current_iteration, current_nonzeros), end="\r")
 
             outputs = model(bow + delta)
             loss = -loss_class(outputs, target)
@@ -94,13 +96,13 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
             topics_lda = lda_model.get_document_topics(list(test_bow_lda))
             sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
             if sorted_lda_topics[0][0] == target:
-                advs = (bow+delta).detach()
-                print("-> attack converged in {} iterations!".format(current_iteration))
+                advs = rounded_advs.detach()
+                print("\n-> attack converged in {} iterations!".format(current_iteration))
                 return advs.cpu(), True
 
             if current_iteration >= max_iteration:
-                advs = (bow+delta).detach()
-                print("-> attack converged in {} iterations!".format(current_iteration))
+                advs = rounded_advs.detach()
+                print("\n-> max iterations reached!".format(current_iteration))
                 return advs.cpu(), False
 
     else:
@@ -111,8 +113,9 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
         while True:
             current_iteration += 1
             print("-> current attack iteration: {} with " \
-                  "current bow values: {}".format(current_iteration,
-                                                  (bow+delta)[0].detach()), end="\r")
+                  "current nonzero elements: {}".format(current_iteration,
+                                                        torch.count_nonzero((bow+delta)[0].detach()),
+                                                        end="\r"))
             outputs = model(bow + delta)
             loss = -loss_class(outputs, target)
             loss.backward()
@@ -132,12 +135,12 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
             sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
             if sorted_lda_topics[0][0] == target:
                 advs = (bow+delta).detach()
-                print("-> attack converged in {} iterations!".format(current_iteration))
+                print("\n-> attack converged in {} iterations!".format(current_iteration))
                 return advs.cpu(), True
 
             if current_iteration >= max_iteration:
                 advs = (bow+delta).detach()
-                print("-> attack converged in {} iterations!".format(current_iteration))
+                print("\n-> max iterations reached!".format(current_iteration))
                 return advs.cpu(), False
 
 
