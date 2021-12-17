@@ -18,7 +18,8 @@ torch.backends.cudnn.benchmark = True
 
 def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learning_rate: float,
          epochs: int, batch_size: int, verbose: bool, attack_id: int, random_test: bool,
-         advs_eps: float, advs_iters: int, l2_attack: bool) -> None:
+         advs_eps: float, advs_iters: int, l2_attack: bool, max_iteration: int,
+         full_attack: bool) -> None:
     """main method"""
 
     start = time.perf_counter()
@@ -56,8 +57,8 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
     print("## Learning_rate: {}".format(learning_rate))
     print("## Batch_size: {}".format(batch_size))
     print("## Epochs: {}".format(epochs))
-    if bool(attack_id):
-        print("## Target Word ID: {}".format(attack_id))
+    if bool(attack_id) or full_attack:
+        print("## Target Word ID: {}".format(attack_id if not full_attack else "Full Attack"))
         print("## Advs. Epsilon: {}".format(advs_eps))
         print("## Advs. Iters: {}".format(advs_iters))
         if l2_attack:
@@ -75,7 +76,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
     elif from_scratch:
         # obtain a preprocessed list of words
         train_lda(num_workers, num_topics, None)
-    elif not bool(attack_id):
+    elif not bool(attack_id) and not full_attack:
         print("[ a trained LDA model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
             # obtain a preprocessed list of words
@@ -88,7 +89,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
     elif from_scratch:
         # save the lda model data as training data with labels
         save_train_data(freq_id=None)
-    elif not bool(attack_id):
+    elif not bool(attack_id) and not full_attack:
         print("[ training data/labels already exists. Save them again? [y/n] ]")
         if from_scratch or input() == "y":
             # save the lda model data as training data with labels
@@ -115,7 +116,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
               model_path=dnn_path,
               freq_id=None,
               verbose=verbose)
-    elif not bool(attack_id):
+    elif not bool(attack_id) and not full_attack:
         print("[ a trained DNN model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
             # train the DNN model on the lda dataset
@@ -129,13 +130,38 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
                   verbose=verbose)
 
     # evaluate both the lda and the dnn model and print their top topics
-    evaluate(num_topics,
-             attack_id,
-             random_test,
-             advs_eps,
-             advs_iters,
-             device,
-             l2_attack)
+    if full_attack:
+        total_success = 0
+        successful_topics = []
+        unsuccessful_topics = []
+        for topic_target in range(num_topics):
+            success_flag = evaluate(num_topics,
+                                    topic_target,
+                                    random_test,
+                                    advs_eps,
+                                    advs_iters,
+                                    device,
+                                    l2_attack,
+                                    max_iteration)
+            if success_flag:
+                total_success += 1
+                successful_topics.append(topic_target)
+            else:
+                unsuccessful_topics.append(topic_target)
+
+        print("\n-> {} / {} attacks successful!".format(total_success, num_topics))
+        print("successful topics: {}".format(successful_topics))
+        print("unsuccessful topics: {}".format(unsuccessful_topics))
+
+    else:
+        success_flag = evaluate(num_topics,
+                                attack_id,
+                                random_test,
+                                advs_eps,
+                                advs_iters,
+                                device,
+                                l2_attack,
+                                max_iteration)
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.
@@ -150,6 +176,7 @@ if __name__ == "__main__":
     parser.add_argument("--advs_iters", "-ai", help="iterations of pgd", type=int, default=100)
     parser.add_argument("--batch_size", "-b", help="batch size", type=int, default=512)
     parser.add_argument("--epochs", "-e", help="training epochs", type=int, default=100)
+    parser.add_argument("--max_iteration", "-mi", help="max. attack iters", type=int, default=1000)
     parser.add_argument("--learning_rate", "-l", help="learning rate", type=float, default=0.01)
     parser.add_argument("--num_workers", "-w", help="number of workers for lda",
                         type=int, default=4)
@@ -162,6 +189,8 @@ if __name__ == "__main__":
     parser.add_argument("--verbose", "-v", help="set gensim to verbose mode",
                         action='store_true', default=False)
     parser.add_argument("--l2_attack", "-l2", help="set attack to l2 mode",
+                        action='store_true', default=False)
+    parser.add_argument("--full_attack", "-f", help="perform an attack on every topic",
                         action='store_true', default=False)
 
 

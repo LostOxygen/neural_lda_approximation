@@ -38,7 +38,7 @@ def get_norm_batch(x, p):
 
 def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
            attack_id: int, advs_eps: float, advs_iters: int,
-           lda_model: LdaMulticore, l2_attack: bool) -> torch.FloatTensor:
+           lda_model: LdaMulticore, l2_attack: bool, max_iteration: int) -> torch.FloatTensor:
     """helper function to create adversarial examples to attack the DNN and LDA model
     :param model: the trained dnn model from which we use the gradient for the attack
     :param attack_id: sets the target word id for the adversarial attack
@@ -49,7 +49,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
 
     :return: Tensor with the manipulated word frequencies
     """
-    print("\n########## [ generating adversarial example.. ] ##########")
+    print("\n######### [ generating adversarial example for topic {} ] #########".format(attack_id))
     loss_class = nn.CrossEntropyLoss(reduction="sum")
     iters = advs_iters
     epsilon = float(advs_eps)
@@ -94,10 +94,14 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
             topics_lda = lda_model.get_document_topics(list(test_bow_lda))
             sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
             if sorted_lda_topics[0][0] == target:
-                break
+                advs = (bow+delta).detach()
+                print("-> attack converged in {} iterations!".format(current_iteration))
+                return advs.cpu(), True
 
-        advs = (bow+delta).detach()
-        print("-> attack converged in {} iterations!".format(current_iteration))
+            if current_iteration >= max_iteration:
+                advs = (bow+delta).detach()
+                print("-> attack converged in {} iterations!".format(current_iteration))
+                return advs.cpu(), False
 
     else:
         delta = torch.zeros_like(bow)
@@ -127,16 +131,18 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
             topics_lda = lda_model.get_document_topics(list(test_bow_lda))
             sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
             if sorted_lda_topics[0][0] == target:
-                break
+                advs = (bow+delta).detach()
+                print("-> attack converged in {} iterations!".format(current_iteration))
+                return advs.cpu(), True
 
-        advs = (bow+delta).detach()
-        print("-> attack converged in {} iterations!".format(current_iteration))
+            if current_iteration >= max_iteration:
+                advs = (bow+delta).detach()
+                print("-> attack converged in {} iterations!".format(current_iteration))
+                return advs.cpu(), False
 
-    return advs.cpu()
 
-
-def evaluate(num_topics: int, attack_id: int, random_test: bool,
-             advs_eps: float, advs_iters: int, device: str, l2_attack: bool) -> None:
+def evaluate(num_topics: int, attack_id: int, random_test: bool, advs_eps: float,
+             advs_iters: int, device: str, l2_attack: bool, max_iteration: int) -> None:
     """helper function to evaluate the lda and dnn model and calculate the top
        topics for a given test text.
        :param num_topics: number of topics which the lda model tries to match
@@ -213,8 +219,11 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool,
 
 # ----------------- start of the adversarial attack stuff ----------------------------
     if bool(attack_id):
-        manipulated_bow = attack(dnn_model, test_bow, device, attack_id,
-                                 advs_eps, advs_iters, lda_model, l2_attack)
+        manipulated_bow, success_flag = attack(dnn_model, test_bow, device, attack_id,
+                                               advs_eps, advs_iters, lda_model, l2_attack,
+                                               max_iteration)
+        if not success_flag:
+            return False
 
         # convert tensor back into bag of words list for the lda model
         test_bow_lda = manipulated_bow[0].tolist()
@@ -264,3 +273,5 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool,
         # the dnn output is already softmaxed, so it just has to be log'ed
         ce_score = -torch.mean(torch.sum(prob_tensor_lda * torch.log(prob_tensor_dnn), -1))
         print("\n-> Cross-Entropy between LDA and DNN: {}".format(ce_score))
+
+        return True
