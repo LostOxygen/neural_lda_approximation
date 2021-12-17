@@ -51,4 +51,5 @@ python main.py [-h] [--gpu | -g GPU] [--num_workers | -w WORKERS] [--num_topics 
 | -ai, --advs_iters | INT | specifies the iterations for pgd inside the adverarial attack |
 | -r, --random_test | enables random test documents for evaluation |
 | -s, --from_scratch | BOOL | flag to ignore every pretrained model and datasets and create everything from scratch |
+| -l2, --l2_attack | BOOL | flag to activate the L2 norm attack (rounded floats) instead of the LINF (whole integers) |
 | -v, --verbose | BOOL | flag to set Gensim to verbose mode to print the LDA information during it's training |

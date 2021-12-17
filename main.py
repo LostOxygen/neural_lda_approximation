@@ -18,7 +18,7 @@ torch.backends.cudnn.benchmark = True
 
 def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learning_rate: float,
          epochs: int, batch_size: int, verbose: bool, attack_id: int, random_test: bool,
-         advs_eps: float, advs_iters: int) -> None:
+         advs_eps: float, advs_iters: int, l2_attack: bool) -> None:
     """main method"""
 
     start = time.perf_counter()
@@ -60,6 +60,10 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
         print("## Target Word ID: {}".format(attack_id))
         print("## Advs. Epsilon: {}".format(advs_eps))
         print("## Advs. Iters: {}".format(advs_iters))
+        if l2_attack:
+            print("## Attack mode: L2 (rounded floats)")
+        else:
+            print("## Attack mode: LINF (integers)")
     print("## Random Test: {}".format(random_test))
     print("#"*50)
     print("\n\n")
@@ -130,7 +134,8 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
              random_test,
              advs_eps,
              advs_iters,
-             device)
+             device,
+             l2_attack)
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.
@@ -155,6 +160,8 @@ if __name__ == "__main__":
     parser.add_argument("--random_test", "-r", help="enable random test documents",
                         action='store_true', default=False)
     parser.add_argument("--verbose", "-v", help="set gensim to verbose mode",
+                        action='store_true', default=False)
+    parser.add_argument("--l2_attack", "-l2", help="set attack to l2 mode",
                         action='store_true', default=False)
 
 

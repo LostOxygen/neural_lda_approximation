@@ -8,8 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import webdataset as wds
-# from advertorch.attacks import LinfPGDAttack, L2PGDAttack
-from utils.network import DNN, CustomCrossEntropy
+from utils.network import DNN
 
 def get_models(num_topics: int, is_freq: bool) -> Tuple[LdaMulticore, nn.Sequential]:
     """helper function to load and return the previous trained LDA and DNN models
@@ -30,70 +29,114 @@ def get_models(num_topics: int, is_freq: bool) -> Tuple[LdaMulticore, nn.Sequent
 
     return lda_model, dnn_model
 
+
+def get_norm_batch(x, p):
+    """function from Advertorch for normalize batches"""
+    batch_size = x.size(0)
+    return x.abs().pow(p).view(batch_size, -1).sum(dim=1).pow(1. / p)
+
+
 def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
            attack_id: int, advs_eps: float, advs_iters: int,
-           lda_model: LdaMulticore) -> torch.FloatTensor:
+           lda_model: LdaMulticore, l2_attack: bool) -> torch.FloatTensor:
     """helper function to create adversarial examples to attack the DNN and LDA model
     :param model: the trained dnn model from which we use the gradient for the attack
     :param attack_id: sets the target word id for the adversarial attack
     :param advs_eps: epsilon value for the adverarial attack
     :param advs_iters: iterations of pgd
     :param lda_model: the lda model which gets proxied by the dnn
+    :param l2_attack: flag to specifiy if the l2 attack or the linf should be used
 
     :return: Tensor with the manipulated word frequencies
     """
     print("\n########## [ generating adversarial example.. ] ##########")
     loss_class = nn.CrossEntropyLoss(reduction="sum")
     iters = advs_iters
-    epsilon = advs_eps
+    epsilon = float(advs_eps)
     bow = bow.to(device)
     target = torch.LongTensor([attack_id]).to(device)
     model = copy.deepcopy(model).to(device)
-    # initialize the adversary class
-    # adversary = L2PGDAttack(model, loss_fn=loss_class, eps=epsilon, nb_iter=iters,
-    #                         eps_iter=epsilon, rand_init=True,
-    #                         clip_min=0.0, clip_max=1000.0, targeted=True)
-    delta = torch.zeros_like(bow)
-    delta.requires_grad_()
-    current_iteration = 0
 
-    #for ii in range(iters):
-    while True:
-        current_iteration += 1
-        print("-> current attack iteration: {} with " \
-              "current bow values: {}".format(current_iteration,
-                                              (bow+delta)[0].detach()), end="\r")
-        outputs = model(bow + delta)
-        # check if the attack was successful on the original lda
-        rounded_advs = torch.round(bow+delta)
-        test_bow_lda = rounded_advs[0].tolist()
-        test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
-        topics_lda = lda_model.get_document_topics(list(test_bow_lda))
-        sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
-        if sorted_lda_topics[0][0] == target:
-            break
+    if l2_attack:
+        current_iteration = 0
+        delta = torch.zeros_like(bow)
+        delta.requires_grad_()
 
-        # print(torch.argmax(F.softmax(outputs[0], dim=-1)))
-        loss = -loss_class(outputs, target)
-        loss.backward()
+        while True:
+            current_iteration += 1
+            print("-> current attack iteration: {}".format(current_iteration), end="\r")
 
-        grad_sign = delta.grad.data.sign()
-        # delta.data = delta.data + batch_multiply(1.0, grad_sign)
-        delta.data = delta.data + grad_sign
-        delta.data = torch.clamp(delta.data, torch.tensor(epsilon).to(device))
-        delta.data = torch.clamp(bow.data + delta.data, 0.0, 1000000.0) - bow.data
-        delta.grad.data.zero_()
+            outputs = model(bow + delta)
+            loss = -loss_class(outputs, target)
+            loss.backward()
 
-    advs = (bow+delta).detach().cpu()
-    print("-> attack converged in {} iterations!".format(current_iteration))
+            # perform the attack
+            grad = delta.grad.data
+            # normalize the gradient on L2 norm
+            norm = get_norm_batch(x=grad, p=2)
+            norm = torch.max(norm, torch.ones_like(norm) * 1e-6)
+            grad = torch.multiply(1. / norm, grad)
 
-    # advs = adversary.perturb(bow, target).detach().cpu()
+            # perform a step
+            delta.data = delta.data + torch.multiply(grad, iters)
+            delta.data = torch.clamp(bow.data + delta.data, 0.0, 100000.0) - bow.data
 
-    return advs
+            # project back into epsilon constraint
+            if epsilon is not None:
+                delta_norm = get_norm_batch(x=delta.data, p=2)
+                factor = torch.min(epsilon / delta_norm, torch.ones_like(delta_norm))
+                delta.data = torch.multiply(delta.data, factor)
+
+            # check if the attack was successful on the original lda
+            rounded_advs = torch.round(bow + delta)
+            test_bow_lda = rounded_advs[0].tolist()
+            test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
+            topics_lda = lda_model.get_document_topics(list(test_bow_lda))
+            sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
+            if sorted_lda_topics[0][0] == target:
+                break
+
+        advs = (bow+delta).detach()
+        print("-> attack converged in {} iterations!".format(current_iteration))
+
+    else:
+        delta = torch.zeros_like(bow)
+        delta.requires_grad_()
+        current_iteration = 0
+
+        while True:
+            current_iteration += 1
+            print("-> current attack iteration: {} with " \
+                  "current bow values: {}".format(current_iteration,
+                                                  (bow+delta)[0].detach()), end="\r")
+            outputs = model(bow + delta)
+            loss = -loss_class(outputs, target)
+            loss.backward()
+
+            grad_sign = delta.grad.data.sign()
+            # delta.data = delta.data + batch_multiply(1.0, grad_sign)
+            delta.data = delta.data + grad_sign
+            delta.data = torch.clamp(delta.data, torch.tensor(epsilon).to(device))
+            delta.data = torch.clamp(bow.data + delta.data, 0.0, 1000000.0) - bow.data
+            delta.grad.data.zero_()
+
+            # check if the attack was successful on the original lda
+            rounded_advs = torch.round(bow+delta)
+            test_bow_lda = rounded_advs[0].tolist()
+            test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
+            topics_lda = lda_model.get_document_topics(list(test_bow_lda))
+            sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
+            if sorted_lda_topics[0][0] == target:
+                break
+
+        advs = (bow+delta).detach()
+        print("-> attack converged in {} iterations!".format(current_iteration))
+
+    return advs.cpu()
 
 
 def evaluate(num_topics: int, attack_id: int, random_test: bool,
-             advs_eps: float, advs_iters: int, device: str) -> None:
+             advs_eps: float, advs_iters: int, device: str, l2_attack: bool) -> None:
     """helper function to evaluate the lda and dnn model and calculate the top
        topics for a given test text.
        :param num_topics: number of topics which the lda model tries to match
@@ -101,6 +144,7 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool,
        :param random_test: flag enables random test documents
        :param device: the device on which the computation happens
        :param advs_eps: epsilon value for the adverarial attack
+       :param l2_attack: flag to specifiy if the l2 attack or the linf should be used
 
        :param advs_iters: iterations of pgd
        :return: None
@@ -170,7 +214,7 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool,
 # ----------------- start of the adversarial attack stuff ----------------------------
     if bool(attack_id):
         manipulated_bow = attack(dnn_model, test_bow, device, attack_id,
-                                 advs_eps, advs_iters, lda_model)
+                                 advs_eps, advs_iters, lda_model, l2_attack)
 
         # convert tensor back into bag of words list for the lda model
         test_bow_lda = manipulated_bow[0].tolist()
