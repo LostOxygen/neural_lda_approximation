@@ -102,7 +102,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
 
             if current_iteration >= max_iteration:
                 advs = rounded_advs.detach()
-                print("\n-> max iterations reached!".format(current_iteration))
+                print("\n-> max iterations reached!")
                 return advs.cpu(), False
 
     else:
@@ -140,7 +140,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
 
             if current_iteration >= max_iteration:
                 advs = (bow+delta).detach()
-                print("\n-> max iterations reached!".format(current_iteration))
+                print("\n-> max iterations reached!")
                 return advs.cpu(), False
 
 
