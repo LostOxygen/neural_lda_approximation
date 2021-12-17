@@ -36,6 +36,10 @@ Training the LDA will also take several hours. So make sure to use the **--num_w
 ```python
 python main.py [-h] [--gpu | -g GPU] [--num_workers | -w WORKERS] [--num_topics | -t TOPICS] [--from_scratch | -s]
 ```
+e.g.
+```python
+python3 main.py --attack_id 33 --l2_attack --advs_eps 100
+```
 ### Arguments
 | Argument | Type | Description|
 |----------|------|------------|
