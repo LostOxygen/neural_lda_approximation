@@ -113,9 +113,9 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
         while True:
             current_iteration += 1
             print("-> current attack iteration: {} with " \
-                  "current nonzero elements: {}".format(current_iteration,
-                                                        torch.count_nonzero((bow+delta)[0].detach()),
-                                                        end="\r"))
+                  "current nonzero elem.: {}".format(current_iteration,
+                                                     torch.count_nonzero((bow+delta)[0].detach()),
+                                                     end="\r"))
             outputs = model(bow + delta)
             loss = -loss_class(outputs, target)
             loss.backward()
