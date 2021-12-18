@@ -82,8 +82,8 @@ def get_loaders(batch_size: int, freq_id: int) -> DataLoader:
         val_data_path = "./data/wiki_val.tar"
 
     # build a wds dataset, shuffle it, decode the data and create dense tensors from sparse ones
-    train_dataset = wds.WebDataset(train_data_path).shuffle(100).decode().to_tuple("input.pyd",
-                                                                                   "output.pyd")
+    train_dataset = wds.WebDataset(train_data_path).shuffle(1000).decode().to_tuple("input.pyd",
+                                                                                    "output.pyd")
     val_dataset = wds.WebDataset(val_data_path).decode().to_tuple("input.pyd", "output.pyd")
     test_dataset = wds.WebDataset(test_data_path).decode().to_tuple("input.pyd", "output.pyd")
 
@@ -122,7 +122,7 @@ def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
     net = get_model(num_topics, len(dictionary))
     # print the network summary, if verbose mode is active
     if verbose:
-        summary(net)
+        summary(net, len(dictionary))
 
     criterion = CustomCrossEntropy()
     optimizer = optim.SGD(net.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)

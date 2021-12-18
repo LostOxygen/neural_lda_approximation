@@ -53,7 +53,7 @@ def train_lda(num_workers: int, num_topics: int, freq_id: int) -> None:
     # create a word corpus
     ldamodel = LdaMulticore(bow_list, num_topics=num_topics, id2word=dictionary,
                             passes=2, workers=num_workers, eval_every=0)
-    save_path = LDA_PATH + "freq_lda_model" if bool(freq_id) else "lda_model"
+    save_path = LDA_PATH + "freq_lda_model" if bool(freq_id) else LDA_PATH + "lda_model"
     print("[ saving lda model in {} ]".format(save_path))
     if not os.path.isdir(LDA_PATH):
         os.mkdir(LDA_PATH)
