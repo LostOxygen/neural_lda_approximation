@@ -161,7 +161,7 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool, advs_eps: float
     lda_model, dnn_model = get_models(num_topics, None)
     test_data_path = "./data/wiki_test.tar"
 
-    if random_test:
+    if random_test or bool(attack_id) or l2_attack:
         test_dataset = wds.WebDataset(test_data_path).decode().shuffle(1000).to_tuple("input.pyd",
                                                                                       "output.pyd")
     else:
