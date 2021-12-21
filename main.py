@@ -172,14 +172,14 @@ if __name__ == "__main__":
     parser.add_argument("--gpu", "-g", help="GPU", type=int, default=0)
     parser.add_argument("--attack_id", "-a", help="id of the target word", type=int, default=None)
     parser.add_argument("--advs_eps", "-ae", help="epsilon for the adversarial attack",
-                        type=float, default=1)
+                        type=float, default=100)
     parser.add_argument("--advs_iters", "-ai", help="iterations of pgd", type=int, default=100)
     parser.add_argument("--batch_size", "-b", help="batch size", type=int, default=512)
     parser.add_argument("--epochs", "-e", help="training epochs", type=int, default=100)
     parser.add_argument("--max_iteration", "-mi", help="max. attack iters", type=int, default=10)
     parser.add_argument("--learning_rate", "-l", help="learning rate", type=float, default=0.01)
     parser.add_argument("--num_workers", "-w", help="number of workers for lda",
-                        type=int, default=4)
+                        type=int, default=8)
     parser.add_argument("--num_topics", "-t", help="number of topics for lda",
                         type=int, default=100)
     parser.add_argument("--from_scratch", "-s", help="train lda from scratch",
