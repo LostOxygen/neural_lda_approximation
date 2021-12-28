@@ -85,7 +85,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id:
             # perform the attack
             grad = delta.grad.data
             # normalize the gradient on L2 norm
-            norm = get_norm_batch(x=grad, p=2)
+            norm = get_norm_batch(batch=grad, norm=2)
             norm = torch.max(norm, torch.ones_like(norm) * 1e-6)
             grad = torch.multiply(1. / norm, grad)
 
