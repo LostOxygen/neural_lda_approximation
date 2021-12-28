@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import webdataset as wds
-from utils.network import DNN
+from utils.network import DNN, CustomCrossEntropy, KLDivLoss
 
 def get_models(num_topics: int, is_freq: bool) -> Tuple[LdaMulticore, nn.Sequential]:
     """helper function to load and return the previous trained LDA and DNN models
@@ -30,32 +30,42 @@ def get_models(num_topics: int, is_freq: bool) -> Tuple[LdaMulticore, nn.Sequent
     return lda_model, dnn_model
 
 
-def get_norm_batch(x, p):
+def get_norm_batch(batch, norm):
     """function from Advertorch for normalize batches"""
-    batch_size = x.size(0)
-    return x.abs().pow(p).view(batch_size, -1).sum(dim=1).pow(1. / p)
+    batch_size = batch.size(0)
+    return batch.abs().pow(norm).view(batch_size, -1).sum(dim=1).pow(1. / norm)
 
 
-def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
-           attack_id: int, advs_eps: float, advs_iters: int,
-           lda_model: LdaMulticore, l2_attack: bool, max_iteration: int) -> torch.FloatTensor:
+def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id: int,
+           advs_eps: float, num_topics: int, lda_model: LdaMulticore, l2_attack: bool,
+           max_iteration: int, prob_attack: bool) -> torch.FloatTensor:
     """helper function to create adversarial examples to attack the DNN and LDA model
     :param model: the trained dnn model from which we use the gradient for the attack
     :param attack_id: sets the target word id for the adversarial attack
     :param advs_eps: epsilon value for the adverarial attack
-    :param advs_iters: iterations of pgd
+    :param num_topics: number of topics which the lda model tries to match
     :param lda_model: the lda model which gets proxied by the dnn
     :param l2_attack: flag to specifiy if the l2 attack or the linf should be used
+    :param prob_attack: flag which activates a whole prob. dist. as a target instead of a single
 
     :return: Tensor with the manipulated word frequencies
     """
     print("\n######### [ generating adversarial example for topic {} ] #########".format(attack_id))
-    loss_class = nn.CrossEntropyLoss(reduction="sum")
-    iters = advs_iters
+    step_size = 100 # attack step size
     epsilon = float(advs_eps)
     bow = bow.to(device)
-    target = torch.LongTensor([attack_id]).to(device)
     model = copy.deepcopy(model).to(device)
+
+    if prob_attack:
+        prob_dist = F.softmax(torch.randn(num_topics), dim=-1)
+        target = torch.FloatTensor(prob_dist).unsqueeze(dim=0).to(device)
+        print([target[0].sort(descending=True)])
+        loss_class = KLDivLoss()
+    else:
+        target = torch.LongTensor([attack_id]).to(device)
+        loss_class = nn.CrossEntropyLoss(reduction="sum")
+
+
 
     if l2_attack:
         current_iteration = 0
@@ -80,7 +90,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
             grad = torch.multiply(1. / norm, grad)
 
             # perform a step
-            delta.data = delta.data + torch.multiply(grad, iters)
+            delta.data = delta.data + torch.multiply(grad, step_size)
             delta.data = torch.clamp(bow.data + delta.data, 0.0, 100000.0) - bow.data
 
             # project back into epsilon constraint
@@ -95,7 +105,8 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
             test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
             topics_lda = lda_model.get_document_topics(list(test_bow_lda))
             sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
-            if sorted_lda_topics[0][0] == target:
+
+            if not prob_attack and sorted_lda_topics[0][0] == target:
                 advs = rounded_advs.detach()
                 print("\n-> attack converged in {} iterations!".format(current_iteration))
                 return advs.cpu(), True
@@ -145,7 +156,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str,
 
 
 def evaluate(num_topics: int, attack_id: int, random_test: bool, advs_eps: float,
-             advs_iters: int, device: str, l2_attack: bool, max_iteration: int) -> None:
+             device: str, l2_attack: bool, max_iteration: int, prob_attack: bool) -> None:
     """helper function to evaluate the lda and dnn model and calculate the top
        topics for a given test text.
        :param num_topics: number of topics which the lda model tries to match
@@ -154,8 +165,8 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool, advs_eps: float
        :param device: the device on which the computation happens
        :param advs_eps: epsilon value for the adverarial attack
        :param l2_attack: flag to specifiy if the l2 attack or the linf should be used
+       :param prob_attack: flag which activates a whole prob. dist. as a target instead of a single
 
-       :param advs_iters: iterations of pgd
        :return: None
     """
     lda_model, dnn_model = get_models(num_topics, None)
@@ -222,9 +233,9 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool, advs_eps: float
 
 # ----------------- start of the adversarial attack stuff ----------------------------
     if bool(attack_id):
-        manipulated_bow, success_flag = attack(dnn_model, test_bow, device, attack_id,
-                                               advs_eps, advs_iters, lda_model, l2_attack,
-                                               max_iteration)
+        manipulated_bow, success_flag = attack(dnn_model, test_bow, device, attack_id, advs_eps,
+                                               num_topics, lda_model, l2_attack, max_iteration,
+                                               prob_attack)
         if not success_flag:
             return False
 

@@ -18,7 +18,7 @@ torch.backends.cudnn.benchmark = True
 
 def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learning_rate: float,
          epochs: int, batch_size: int, verbose: bool, attack_id: int, random_test: bool,
-         advs_eps: float, advs_iters: int, l2_attack: bool, max_iteration: int,
+         advs_eps: float, l2_attack: bool, max_iteration: int, prob_attack: bool,
          full_attack: bool) -> None:
     """main method"""
 
@@ -58,9 +58,11 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
     print("## Batch_size: {}".format(batch_size))
     print("## Epochs: {}".format(epochs))
     if bool(attack_id) or full_attack:
-        print("## Target Word ID: {}".format(attack_id if not full_attack else "Full Attack"))
+        if not prob_attack:
+            print("## Target Word ID: {}".format(attack_id if not full_attack else "Full Attack"))
+        else:
+            print("## Target: Whole Distribution")
         print("## Advs. Epsilon: {}".format(advs_eps))
-        print("## Advs. Iters: {}".format(advs_iters))
         if l2_attack:
             print("## Attack mode: L2 (rounded floats)")
         else:
@@ -139,10 +141,10 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
                                     topic_target,
                                     random_test,
                                     advs_eps,
-                                    advs_iters,
                                     device,
                                     l2_attack,
-                                    max_iteration)
+                                    max_iteration,
+                                    prob_attack)
             if success_flag:
                 total_success += 1
                 successful_topics.append(topic_target)
@@ -158,10 +160,10 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
                                 attack_id,
                                 random_test,
                                 advs_eps,
-                                advs_iters,
                                 device,
                                 l2_attack,
-                                max_iteration)
+                                max_iteration,
+                                prob_attack)
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.
@@ -173,20 +175,21 @@ if __name__ == "__main__":
     parser.add_argument("--attack_id", "-a", help="id of the target word", type=int, default=None)
     parser.add_argument("--advs_eps", "-ae", help="epsilon for the adversarial attack",
                         type=float, default=100)
-    parser.add_argument("--advs_iters", "-ai", help="iterations of pgd", type=int, default=100)
     parser.add_argument("--batch_size", "-b", help="batch size", type=int, default=512)
     parser.add_argument("--epochs", "-e", help="training epochs", type=int, default=100)
-    parser.add_argument("--max_iteration", "-mi", help="max. attack iters", type=int, default=10)
+    parser.add_argument("--max_iteration", "-mi", help="max. attack iters", type=int, default=100)
     parser.add_argument("--learning_rate", "-l", help="learning rate", type=float, default=0.01)
     parser.add_argument("--num_workers", "-w", help="number of workers for lda",
                         type=int, default=8)
     parser.add_argument("--num_topics", "-t", help="number of topics for lda",
-                        type=int, default=100)
+                        type=int, default=50)
     parser.add_argument("--from_scratch", "-s", help="train lda from scratch",
                         action='store_true', default=False)
     parser.add_argument("--random_test", "-r", help="enable random test documents",
                         action='store_true', default=False)
     parser.add_argument("--verbose", "-v", help="set gensim to verbose mode",
+                        action='store_true', default=False)
+    parser.add_argument("--prob_attack", "-pa", help="try to use a whole distribution as target",
                         action='store_true', default=False)
     parser.add_argument("--l2_attack", "-l2", help="set attack to l2 mode",
                         action='store_true', default=False)
