@@ -38,3 +38,17 @@ class CustomCrossEntropy(torch.nn.Module):
         """forward method to calculate the loss for a given prediction and soft_targets"""
         log_probs = F.log_softmax(prediction, dim=-1)
         return torch.mean(torch.sum(-target * log_probs, -1))
+
+
+class KLDivLoss(torch.nn.Module):
+    """standard kullback leibler divergence loss as described in:
+       https://pytorch.org/docs/stable/generated/torch.nn.KLDivLoss.html
+    """
+    def __init__(self):
+        super(KLDivLoss, self).__init__()
+
+    def forward(self, y: float, y_hat: float) -> float:
+        """forward method to calculate the loss for a given prediction and label"""
+        return F.kl_div(F.log_softmax(y, dim=1),
+                        F.softmax(y_hat, dim=1),
+                        None, None, reduction='sum')
