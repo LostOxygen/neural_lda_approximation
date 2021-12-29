@@ -95,7 +95,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id:
 
             # project back into epsilon constraint
             if epsilon is not None:
-                delta_norm = get_norm_batch(x=delta.data, p=2)
+                delta_norm = get_norm_batch(batch=grad, norm=2)
                 factor = torch.min(epsilon / delta_norm, torch.ones_like(delta_norm))
                 delta.data = torch.multiply(delta.data, factor)
 
