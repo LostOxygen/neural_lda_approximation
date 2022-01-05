@@ -53,7 +53,7 @@ python3 main.py --attack_id 33 --l2_attack --advs_eps 100
 | -a, --attack_id | INT | specifies the word id for the target of the adversarial attack |
 | -ae, --advs_eps | FLOAT | specifies the epsilon for the adversarial attack |
 | -ai, --dist_attack | BOOL | flag to activate whole distribution target attack |
-| -r, --random_test | enables random test documents for evaluation |
+| -r, --random_test | BOOL | enables random test documents for evaluation |
 | -s, --from_scratch | BOOL | flag to ignore every pretrained model and datasets and create everything from scratch |
 | -l2, --l2_attack | BOOL | flag to activate the L2 norm attack (rounded floats) instead of the LINF (whole integers) |
 | -v, --verbose | BOOL | flag to set Gensim to verbose mode to print the LDA information during it's training |
