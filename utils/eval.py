@@ -36,6 +36,12 @@ def get_norm_batch(batch, norm):
     return batch.abs().pow(norm).view(batch_size, -1).sum(dim=1).pow(1. / norm)
 
 
+def normalize_probs(probs):
+    """helper function to normalize probability vectors"""
+    factor = 1 / torch.sum(probs)
+    return probs * factor
+
+
 def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id: int,
            advs_eps: float, num_topics: int, lda_model: LdaMulticore, l2_attack: bool,
            max_iteration: int, prob_attack: bool) -> torch.FloatTensor:
@@ -52,19 +58,35 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id:
     """
     print("\n######### [ generating adversarial example for topic {} ] #########".format(attack_id))
     step_size = 100 # attack step size
+    ce_boundary = 0.1 # cross entropy boundary
     epsilon = float(advs_eps)
     bow = bow.to(device)
     model = copy.deepcopy(model).to(device)
 
     if prob_attack:
-        prob_dist = F.softmax(torch.randn(num_topics), dim=-1)
-        target = torch.FloatTensor(prob_dist).unsqueeze(dim=0).to(device)
-        print([target[0].sort(descending=True)])
-        loss_class = KLDivLoss()
+        prob_dist = torch.zeros(num_topics)
+        prob_dist_base = torch.zeros(num_topics)
+
+        # obtain the normal topic distribution of the LDA model
+        bow_lda_list = [(id, int(counting)) for id, counting in enumerate(bow[0].tolist())]
+        topic_dist = lda_model.get_document_topics(bow_lda_list)
+
+        # small noise constant is getting added onto the non-zero topic probabilities
+        noise = torch.abs(torch.randn(len(topic_dist))) * 1e-3
+
+        # write values back in the whole probability distribution vector add the noise and normalize
+        for idx, topic_tuple in enumerate(topic_dist):
+            prob_dist_base[topic_tuple[0]] = torch.tensor(topic_tuple[1])
+            prob_dist[topic_tuple[0]] = torch.tensor(topic_tuple[1]) + noise[idx]
+
+        prob_dist_base = prob_dist_base.to(device)
+        target = normalize_probs(prob_dist).to(device)
+        loss_class = CustomCrossEntropy()
+        print("Cross-Entropy betw. Base and Target: {}".format(loss_class(prob_dist_base, target)))
+
     else:
         target = torch.LongTensor([attack_id]).to(device)
         loss_class = nn.CrossEntropyLoss(reduction="sum")
-
 
 
     if l2_attack:
@@ -104,12 +126,25 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id:
             test_bow_lda = rounded_advs[0].tolist()
             test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
             topics_lda = lda_model.get_document_topics(list(test_bow_lda))
-            sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
 
-            if not prob_attack and sorted_lda_topics[0][0] == target:
-                advs = rounded_advs.detach()
-                print("\n-> attack converged in {} iterations!".format(current_iteration))
-                return advs.cpu(), True
+            # calculate the cross entropy value between the adversarial example LDA output
+            # and the target
+            prob_dist_lda = torch.zeros(num_topics).to(device)
+            for idx, topic_tuple in enumerate(topics_lda):
+                prob_dist_lda[topic_tuple[0]] = torch.tensor(topic_tuple[1])
+            cross_entropy_value = loss_class(prob_dist_lda, target)
+
+            if prob_attack:
+                if cross_entropy_value <= ce_boundary:
+                    advs = rounded_advs.detach()
+                    print("\n-> attack converged in {} iterations!".format(current_iteration))
+                    return advs.cpu(), True
+            else:
+                sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
+                if sorted_lda_topics[0][0] == target:
+                    advs = rounded_advs.detach()
+                    print("\n-> attack converged in {} iterations!".format(current_iteration))
+                    return advs.cpu(), True
 
             if current_iteration >= max_iteration:
                 advs = rounded_advs.detach()
@@ -144,6 +179,10 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id:
             test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
             topics_lda = lda_model.get_document_topics(list(test_bow_lda))
             sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
+            if prob_attack:
+                raise NotImplementedError("This Attack isn't implemented for using the whole prob." \
+                                          "Please use --l2_attack flag.")
+
             if sorted_lda_topics[0][0] == target:
                 advs = (bow+delta).detach()
                 print("\n-> attack converged in {} iterations!".format(current_iteration))
@@ -170,7 +209,8 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool, advs_eps: float
        :return: None
     """
     lda_model, dnn_model = get_models(num_topics, None)
-    test_data_path = "./data/wiki_test.tar"
+    # yes the train set is used on purpose!
+    test_data_path = "./data/wiki_data.tar"
 
     if random_test or bool(attack_id) or l2_attack:
         test_dataset = wds.WebDataset(test_data_path).decode().shuffle(1000).to_tuple("input.pyd",
