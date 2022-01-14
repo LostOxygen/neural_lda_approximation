@@ -78,7 +78,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
     elif from_scratch:
         # obtain a preprocessed list of words
         train_lda(num_workers, num_topics, None)
-    elif not bool(attack_id) and not full_attack:
+    elif not bool(attack_id) and not full_attack and not prob_attack:
         print("[ a trained LDA model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
             # obtain a preprocessed list of words
@@ -91,7 +91,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
     elif from_scratch:
         # save the lda model data as training data with labels
         save_train_data(freq_id=None)
-    elif not bool(attack_id) and not full_attack:
+    elif not bool(attack_id) and not full_attack and not prob_attack:
         print("[ training data/labels already exists. Save them again? [y/n] ]")
         if from_scratch or input() == "y":
             # save the lda model data as training data with labels
@@ -118,7 +118,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
               model_path=dnn_path,
               freq_id=None,
               verbose=verbose)
-    elif not bool(attack_id) and not full_attack:
+    elif not bool(attack_id) and not full_attack and not prob_attack:
         print("[ a trained DNN model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
             # train the DNN model on the lda dataset
