@@ -1,4 +1,5 @@
 """helper module to evaluate the lda and dnn model"""
+import random
 from typing import Tuple
 import copy
 import gensim
@@ -41,6 +42,109 @@ def normalize_probs(probs):
     """helper function to normalize probability vectors"""
     factor = 1 / torch.sum(probs)
     return probs * factor
+
+
+def topic_stacking_attack(device: str, advs_eps: float, num_topics: int,
+                          max_iteration: int) -> torch.FloatTensor:
+    """helper function to create adversarial examples to attack the DNN and LDA model
+    :param advs_eps: epsilon value for the adverarial attack
+    :param num_topics: number of topics which the lda model tries to match
+
+    :return: Tensor with the manipulated word frequencies
+    """
+    print("\n######## [ starting topic stacking attack ] ########\n")
+    lda_model, dnn_model = get_models(num_topics, None)
+    # yes the train set is used on purpose!
+    test_data_path = "./data/wiki_data.tar"
+    test_dataset = wds.WebDataset(test_data_path).decode().shuffle(1000).to_tuple("input.pyd",
+                                                                                  "output.pyd")
+
+    test_loader = DataLoader((test_dataset.batched(1)), batch_size=None, num_workers=0)
+    _, test_bow = next(enumerate(test_loader))
+
+    # convert sparse tensor back into dense form
+    test_bow = test_bow[0].to_dense()
+
+    step_size = 100 # attack step size
+    epsilon = float(advs_eps)
+    bow = test_bow.to(device)
+    model = dnn_model.to(device)
+    iterations = 10 # number of iterations to test the same attack settings
+    loss_class = BCELoss()
+
+    performance = torch.zeros(num_topics)
+
+    # generate a vector with 0 to num_topics topics
+    for stacking_iter in range(1, num_topics+1):
+        # and test the attack N times on this vector
+        for _ in range(iterations):
+
+            target = torch.zeros(num_topics).to(device)
+            sampled_topics = random.sample(range(num_topics), stacking_iter)
+            print("sampled topics: {}".format(sampled_topics))
+            target[sampled_topics] = 1.0
+
+            running_attack = True
+            current_iteration = 0
+            delta = torch.zeros_like(bow)
+            delta.requires_grad_()
+
+            while running_attack:
+                current_iteration += 1
+                current_nonzeros = torch.count_nonzero(torch.round((bow+delta)[0].detach()))
+                print("-> current attack iteration: {} with " \
+                      "current nonzero elem.: {} ".format(current_iteration,
+                                                          current_nonzeros), end="\r")
+
+                outputs = F.softmax(model(bow + delta), dim=-1)
+                loss = -loss_class(outputs.squeeze(), target)
+                loss.backward()
+
+                # perform the attack
+                grad = delta.grad.data
+                # normalize the gradient on L2 norm
+                norm = get_norm_batch(batch=grad, norm=2)
+                norm = torch.max(norm, torch.ones_like(norm) * 1e-6)
+                grad = torch.multiply(1. / norm, grad)
+
+                # perform a step
+                delta.data = delta.data + torch.multiply(grad, step_size)
+                delta.data = torch.clamp(bow.data + delta.data, 0.0, 100000.0) - bow.data
+
+                # project back into epsilon constraint
+                if epsilon is not None:
+                    delta_norm = get_norm_batch(batch=grad, norm=2)
+                    factor = torch.min(epsilon / delta_norm, torch.ones_like(delta_norm))
+                    delta.data = torch.multiply(delta.data, factor)
+
+                # check if the attack was successful on the original lda
+                rounded_advs = torch.round(bow + delta)
+                test_bow_lda = rounded_advs[0].tolist()
+                test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
+                topics_lda = lda_model.get_document_topics(list(test_bow_lda))
+
+
+                sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
+                if all(x in sampled_topics for x in sorted_lda_topics[0][0:stacking_iter]):
+                    # advs = rounded_advs.detach()
+                    prob_tensor_lda = torch.zeros(num_topics)
+                    for topic in sorted_lda_topics:
+                        # and also print the ids, words and probs nicely
+                        print(("id: {}".format(topic[0]),
+                               lda_model.id2word[topic[0]],
+                               "prob: {}".format(topic[1])
+                               ))
+                        # insert the probabilities at their id position
+                        prob_tensor_lda[topic[0]] = torch.tensor(topic[1])
+
+                    print("\n-> attack converged in {} iterations!".format(current_iteration))
+                    performance[stacking_iter] += 1
+                    running_attack = False
+
+                if current_iteration >= max_iteration:
+                    advs = rounded_advs.detach()
+                    print("\n-> max iterations reached!")
+                    running_attack = False
 
 
 def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id: int,
@@ -167,6 +271,10 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id:
         delta.requires_grad_()
         current_iteration = 0
 
+        if prob_attack:
+            raise NotImplementedError("Attack isn't implemented for using the whole prob." \
+                                      "Please use --l2_attack flag.")
+
         while True:
             current_iteration += 1
             print("-> current attack iteration: {} with " \
@@ -190,9 +298,6 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id:
             test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
             topics_lda = lda_model.get_document_topics(list(test_bow_lda))
             sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
-            if prob_attack:
-                raise NotImplementedError("Attack isn't implemented for using the whole prob." \
-                                          "Please use --l2_attack flag.")
 
             if sorted_lda_topics[0][0] == target:
                 advs = (bow+delta).detach()

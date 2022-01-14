@@ -12,14 +12,14 @@ import numpy as np
 from utils.words import save_train_data
 from utils.lda import train_lda
 from utils.train import train
-from utils.eval import evaluate
+from utils.eval import evaluate, topic_stacking_attack
 
 torch.backends.cudnn.benchmark = True
 
 def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learning_rate: float,
          epochs: int, batch_size: int, verbose: bool, attack_id: int, random_test: bool,
          advs_eps: float, l2_attack: bool, max_iteration: int, prob_attack: bool,
-         full_attack: bool) -> None:
+         full_attack: bool, topic_stacking: bool) -> None:
     """main method"""
 
     start = time.perf_counter()
@@ -78,7 +78,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
     elif from_scratch:
         # obtain a preprocessed list of words
         train_lda(num_workers, num_topics, None)
-    elif not bool(attack_id) and not full_attack and not prob_attack:
+    elif not bool(attack_id) and not full_attack and not prob_attack and not topic_stacking:
         print("[ a trained LDA model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
             # obtain a preprocessed list of words
@@ -91,7 +91,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
     elif from_scratch:
         # save the lda model data as training data with labels
         save_train_data(freq_id=None)
-    elif not bool(attack_id) and not full_attack and not prob_attack:
+    elif not bool(attack_id) and not full_attack and not prob_attack and not topic_stacking:
         print("[ training data/labels already exists. Save them again? [y/n] ]")
         if from_scratch or input() == "y":
             # save the lda model data as training data with labels
@@ -118,7 +118,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
               model_path=dnn_path,
               freq_id=None,
               verbose=verbose)
-    elif not bool(attack_id) and not full_attack and not prob_attack:
+    elif not bool(attack_id) and not full_attack and not prob_attack and not topic_stacking:
         print("[ a trained DNN model already exists. Train again? [y/n] ]")
         if from_scratch or input() == "y":
             # train the DNN model on the lda dataset
@@ -155,6 +155,11 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
         print("successful topics: {}".format(successful_topics))
         print("unsuccessful topics: {}".format(unsuccessful_topics))
 
+    elif topic_stacking:
+        topic_stacking_attack(device,
+                              advs_eps,
+                              num_topics,
+                              max_iteration)
     else:
         success_flag = evaluate(num_topics,
                                 attack_id,
@@ -194,6 +199,8 @@ if __name__ == "__main__":
     parser.add_argument("--l2_attack", "-l2", help="set attack to l2 mode",
                         action='store_true', default=False)
     parser.add_argument("--full_attack", "-f", help="perform an attack on every topic",
+                        action='store_true', default=False)
+    parser.add_argument("--topic_stacking", "-ts", help="performs topic stacking method",
                         action='store_true', default=False)
 
 

@@ -55,6 +55,7 @@ python3 main.py --attack_id 33 --l2_attack --advs_eps 100
 | -ai, --prob_attack | BOOL | flag to activate whole probability distribution target attack |
 | -r, --random_test | BOOL | enables random test documents for evaluation |
 | -s, --from_scratch | BOOL | flag to ignore every pretrained model and datasets and create everything from scratch |
+| -ts, --topic_stacking | BOOL | flat to use the topic stacking attack to evaluate the performance for more than one target topic at the same time |
 | -l2, --l2_attack | BOOL | flag to activate the L2 norm attack (rounded floats) instead of the LINF (whole integers) |
 | -f, --full_attack | BOOL | flag to attack every topic |
 | -v, --verbose | BOOL | flag to set Gensim to verbose mode to print the LDA information during it's training |
