@@ -9,6 +9,7 @@ import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import webdataset as wds
 from utils.network import DNN, CustomCrossEntropy, KLDivLoss
+from torch.nn  import BCEWithLogitsLoss, BCELoss
 
 def get_models(num_topics: int, is_freq: bool) -> Tuple[LdaMulticore, nn.Sequential]:
     """helper function to load and return the previous trained LDA and DNN models
@@ -56,9 +57,9 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id:
 
     :return: Tensor with the manipulated word frequencies
     """
-    print("\n######### [ generating adversarial example for topic {} ] #########".format(attack_id))
+    print("\n######## [ generating adversarial example for topic {} ] ########\n".format(attack_id))
     step_size = 100 # attack step size
-    ce_boundary = 0.1 # cross entropy boundary
+    ce_boundary = 0.05 # cross entropy boundary
     epsilon = float(advs_eps)
     bow = bow.to(device)
     model = copy.deepcopy(model).to(device)
@@ -81,8 +82,12 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id:
 
         prob_dist_base = prob_dist_base.to(device)
         target = normalize_probs(prob_dist).to(device)
-        loss_class = CustomCrossEntropy()
-        print("Cross-Entropy betw. Base and Target: {}".format(loss_class(prob_dist_base, target)))
+        loss_class = BCELoss()
+
+        print("Target Distribution:")
+        print([target.sort(descending=True)])
+        reference_cross_entropy = loss_class(prob_dist_base, target)
+        print("Cross-Entropy betw. Base and Target: {}".format(reference_cross_entropy))
 
     else:
         target = torch.LongTensor([attack_id]).to(device)
@@ -91,6 +96,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id:
 
     if l2_attack:
         current_iteration = 0
+        cross_entropy_value = 0.0
         delta = torch.zeros_like(bow)
         delta.requires_grad_()
 
@@ -98,10 +104,15 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id:
             current_iteration += 1
             current_nonzeros = torch.count_nonzero(torch.round((bow+delta)[0].detach()))
             print("-> current attack iteration: {} with " \
-                  "current nonzero elem.: {}".format(current_iteration, current_nonzeros), end="\r")
-
-            outputs = model(bow + delta)
-            loss = -loss_class(outputs, target)
+                  "current nonzero elem.: {} " \
+                  "and CE: {} ".format(current_iteration, current_nonzeros,
+                                       cross_entropy_value), end="\r")
+            if prob_attack:
+                outputs = F.softmax(model(bow + delta), dim=-1)
+                loss = -loss_class(outputs.squeeze().cpu(), target.cpu())
+            else:
+                outputs = model(bow + delta)
+                loss = -loss_class(outputs, target)
             loss.backward()
 
             # perform the attack
@@ -127,17 +138,17 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id:
             test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
             topics_lda = lda_model.get_document_topics(list(test_bow_lda))
 
-            # calculate the cross entropy value between the adversarial example LDA output
-            # and the target
-            prob_dist_lda = torch.zeros(num_topics).to(device)
-            for idx, topic_tuple in enumerate(topics_lda):
-                prob_dist_lda[topic_tuple[0]] = torch.tensor(topic_tuple[1])
-            cross_entropy_value = loss_class(prob_dist_lda, target)
-
             if prob_attack:
-                if cross_entropy_value <= ce_boundary:
+                # calculate the cross entropy value between the adversarial example LDA output
+                # and the target
+                prob_dist_lda = torch.zeros(num_topics).to(device)
+                for idx, topic_tuple in enumerate(topics_lda):
+                    prob_dist_lda[topic_tuple[0]] = torch.tensor(topic_tuple[1])
+                cross_entropy_value = loss_class(prob_dist_lda, target)
+                if cross_entropy_value < reference_cross_entropy:
                     advs = rounded_advs.detach()
                     print("\n-> attack converged in {} iterations!".format(current_iteration))
+                    print("Cross-Entropy betw. Poison and Target: {}".format(cross_entropy_value))
                     return advs.cpu(), True
             else:
                 sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
@@ -180,7 +191,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id:
             topics_lda = lda_model.get_document_topics(list(test_bow_lda))
             sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
             if prob_attack:
-                raise NotImplementedError("This Attack isn't implemented for using the whole prob." \
+                raise NotImplementedError("Attack isn't implemented for using the whole prob." \
                                           "Please use --l2_attack flag.")
 
             if sorted_lda_topics[0][0] == target:
@@ -272,7 +283,7 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool, advs_eps: float
     print("\n-> Cross-Entropy between LDA and DNN: {}".format(ce_score))
 
 # ----------------- start of the adversarial attack stuff ----------------------------
-    if bool(attack_id):
+    if bool(attack_id) or prob_attack:
         manipulated_bow, success_flag = attack(dnn_model, test_bow, device, attack_id, advs_eps,
                                                num_topics, lda_model, l2_attack, max_iteration,
                                                prob_attack)
