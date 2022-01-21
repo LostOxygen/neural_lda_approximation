@@ -70,7 +70,7 @@ def topic_stacking_attack(device: str, advs_eps: float, num_topics: int,
     bow = test_bow.to(device)
     model = dnn_model.to(device)
     iterations = 10 # number of iterations to test the same attack settings
-    loss_class = BCELoss()
+    loss_class = nn.CrossEntropyLoss()
 
     performance = torch.zeros(num_topics)
 
@@ -97,7 +97,10 @@ def topic_stacking_attack(device: str, advs_eps: float, num_topics: int,
                                                           current_nonzeros), end="\r")
 
                 outputs = F.softmax(model(bow + delta), dim=-1)
-                loss = -loss_class(outputs.squeeze(), target)
+                if isinstance(loss_class, nn.CrossEntropyLoss):
+                    loss = -loss_class(outputs, target.unsqueeze(dim=0))
+                else:
+                    loss = -loss_class(outputs.squeeze(), target)
                 loss.backward()
 
                 # perform the attack
