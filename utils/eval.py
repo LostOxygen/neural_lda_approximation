@@ -65,12 +65,13 @@ def topic_stacking_attack(device: str, advs_eps: float, num_topics: int,
     # convert sparse tensor back into dense form
     test_bow = test_bow[0].to_dense()
 
-    step_size = 100 # attack step size
+    step_size = 1 # attack step size
     epsilon = float(advs_eps)
     bow = test_bow.to(device)
     model = dnn_model.to(device)
     iterations = 10 # number of iterations to test the same attack settings
-    loss_class = nn.CrossEntropyLoss()
+    # loss_class = nn.CrossEntropyLoss()
+    loss_class = BCELoss()
 
     performance = torch.zeros(num_topics)
 
@@ -81,8 +82,16 @@ def topic_stacking_attack(device: str, advs_eps: float, num_topics: int,
 
             target = torch.zeros(num_topics).to(device)
             sampled_topics = random.sample(range(num_topics), stacking_iter)
-            print("sampled topics: {}".format(sampled_topics))
-            target[sampled_topics] = 1.0
+            print("sampled topics: {}".format(list(reversed(sampled_topics))))
+
+            # go through the reversed list of topics and assign their id to their index in
+            # the target vector. Then softmax it, to squish it back to [0, 1] range.
+            # sampled_topics = reversed(sampled_topics)
+            for ind, topic_ind in reversed(list(enumerate(sampled_topics))):
+                target[topic_ind] = ind+1 # ind + 1 to avoid a 0 as value
+
+            target = torch.where(target > torch.tensor([0.]).to(device),
+                                 F.softmax(target, dim=-1), torch.tensor([0.]).to(device))
 
             running_attack = True
             current_iteration = 0
@@ -97,10 +106,11 @@ def topic_stacking_attack(device: str, advs_eps: float, num_topics: int,
                                                           current_nonzeros), end="\r")
 
                 outputs = F.softmax(model(bow + delta), dim=-1)
-                if isinstance(loss_class, nn.CrossEntropyLoss):
-                    loss = -loss_class(outputs, target.unsqueeze(dim=0))
-                else:
-                    loss = -loss_class(outputs.squeeze(), target)
+                # if isinstance(loss_class, nn.CrossEntropyLoss):
+                #     target = target.type(torch.LongTensor).to(device)
+                #     loss = -loss_class(outputs, target.unsqueeze(dim=0))
+                # else:
+                loss = -loss_class(outputs.squeeze(), target)
                 loss.backward()
 
                 # perform the attack
@@ -149,6 +159,7 @@ def topic_stacking_attack(device: str, advs_eps: float, num_topics: int,
                     print("\n-> max iterations reached!")
                     running_attack = False
 
+    # TODO: Wenn Angriff irgendwann klappt, hier noch ne Auswertung hin uff
 
 def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id: int,
            advs_eps: float, num_topics: int, lda_model: LdaMulticore, l2_attack: bool,
