@@ -138,6 +138,7 @@ def topic_stacking_attack(device: str, advs_eps: float, num_topics: int,
 
 
                 sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
+
                 if all(x in sampled_topics for x in sorted_lda_topics[0][0:stacking_iter]):
                     # advs = rounded_advs.detach()
                     prob_tensor_lda = torch.zeros(num_topics)
@@ -155,6 +156,18 @@ def topic_stacking_attack(device: str, advs_eps: float, num_topics: int,
                     running_attack = False
 
                 if current_iteration >= max_iteration:
+                    doc_topics_dnn = model(rounded_advs).detach()[0]
+                    print("\ntopic prediction of the dnn model on advs. example: ")
+                    topk_topics = F.softmax(doc_topics_dnn, dim=-1).topk(num_topics)
+                    # collect the probabilities to calculate the cross entropy later on
+                    for i in range(num_topics):
+                        # and also print the ids, words and probs nicely
+                        # but print only as much as the lda did
+                        if not i > len(sorted_lda_topics):
+                            print(("id: {}".format(topk_topics[1][i].item()),
+                                   lda_model.id2word[topk_topics[1][i].item()],
+                                   "prob: {}".format(topk_topics[0][i].item())
+                                   ))
                     advs = rounded_advs.detach()
                     print("\n-> max iterations reached!")
                     running_attack = False
