@@ -20,7 +20,7 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
          epochs: int, batch_size: int, verbose: bool, attack_id: int, random_test: bool,
          advs_eps: float, l2_attack: bool, max_iteration: int, prob_attack: bool,
          full_attack: bool, topic_stacking: bool) -> None:
-    """main method"""
+    """main function"""
 
     start = time.perf_counter()
     if verbose:

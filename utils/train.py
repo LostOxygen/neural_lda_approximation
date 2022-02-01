@@ -97,7 +97,7 @@ def get_loaders(batch_size: int, freq_id: int) -> DataLoader:
 def train(epochs: int, learning_rate: int, batch_size: int, num_topics: int,
           device_name: str, model_path: str, freq_id: int, verbose: bool) -> None:
     """
-    Main method to train the model with the specified parameters. Saves the model in every
+    Main function to train the model with the specified parameters. Saves the model in every
     epoch specified in SAVE_EPOCHS. Prints the model status during the training.
     :param epochs: specifies how many epochs the training should last
     :param learning_rate: specifies the learning rate of the training
