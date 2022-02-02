@@ -8,6 +8,7 @@ from tqdm import tqdm
 LDA_PATH = "./models/"
 DATA_PATH = "./data/"
 
+
 def train_lda(num_workers: int, num_topics: int, freq_id: int) -> None:
     """helper function to train and save a lda model in a specified path
        :param num_workers: number of workers to compute the lda

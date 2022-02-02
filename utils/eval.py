@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader
 import webdataset as wds
 from utils.network import DNN, KLDivLoss
 
+
 def get_models(num_topics: int, is_freq: bool) -> Tuple[LdaMulticore, nn.Sequential]:
     """helper function to load and return the previous trained LDA and DNN models
        :param num_topics: number of topics which the lda model tries to match

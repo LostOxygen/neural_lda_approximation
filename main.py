@@ -1,6 +1,6 @@
 """main file to run the lda approximation"""
 # -*- coding: utf-8 -*-
-#!/usr/bin/env python3
+# !/usr/bin/env python3
 import time
 import socket
 import logging
@@ -15,6 +15,7 @@ from utils.train import train
 from utils.eval import evaluate, topic_stacking_attack
 
 torch.backends.cudnn.benchmark = True
+
 
 def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learning_rate: float,
          epochs: int, batch_size: int, verbose: bool, attack_id: int, random_test: bool,

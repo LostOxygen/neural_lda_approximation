@@ -1,6 +1,6 @@
 """main file to run the lda matching"""
 # -*- coding: utf-8 -*-
-#!/usr/bin/env python3
+# !/usr/bin/env python3
 import time
 import argparse
 import os
@@ -10,6 +10,7 @@ from gensim.models import LdaMulticore
 
 LDA_PATH = "./models/"
 DATA_PATH = "./data/"
+
 
 def train_lda(num_topics: int, path_suffix: str) -> gensim.models.LdaMulticore:
     """helper function for lda training
