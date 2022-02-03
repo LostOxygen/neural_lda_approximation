@@ -6,7 +6,6 @@ import gensim
 from gensim.models import LdaMulticore
 import torch
 import torch.nn as nn
-from torch.nn import BCELoss
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
 import webdataset as wds
@@ -71,8 +70,8 @@ def topic_stacking_attack(device: str, advs_eps: float, num_topics: int,
     bow = test_bow.to(device)
     model = dnn_model.to(device)
     iterations = 10 # number of iterations to test the same attack settings
-    # loss_class = nn.CrossEntropyLoss()
-    loss_class = BCELoss()
+    # loss_class = nn.BCELoss()
+    loss_class = KLDivLoss()
 
     performance = torch.zeros(num_topics)
 

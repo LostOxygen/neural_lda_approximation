@@ -49,6 +49,4 @@ class KLDivLoss(torch.nn.Module):
 
     def forward(self, y: float, y_hat: float) -> float:
         """forward method to calculate the loss for a given prediction and label"""
-        return F.kl_div(F.log_softmax(y, dim=-1),
-                        F.softmax(y_hat, dim=-1),
-                        None, None, reduction='sum')
+        return F.kl_div(y.log(), y_hat, None, None, reduction='sum')
