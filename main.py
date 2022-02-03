@@ -183,7 +183,7 @@ if __name__ == "__main__":
                         type=float, default=100)
     parser.add_argument("--batch_size", "-b", help="batch size", type=int, default=512)
     parser.add_argument("--epochs", "-e", help="training epochs", type=int, default=100)
-    parser.add_argument("--max_iteration", "-mi", help="max. attack iters", type=int, default=100)
+    parser.add_argument("--max_iteration", "-mi", help="max. attack iters", type=int, default=200)
     parser.add_argument("--learning_rate", "-l", help="learning rate", type=float, default=0.01)
     parser.add_argument("--num_workers", "-w", help="number of workers for lda",
                         type=int, default=8)
