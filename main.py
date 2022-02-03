@@ -46,10 +46,9 @@ def main(gpu: int, num_workers: int, num_topics: int, from_scratch: bool, learni
     # print a summary of the chosen arguments
     print("\n\n\n"+"#"*50)
     print("## " + str(datetime.datetime.now().strftime("%A, %d. %B %Y %I:%M%p")))
-    print("## System: {} CPU cores with {} GPUs on {}".format(torch.get_num_threads(),
-                                                              torch.cuda.device_count(),
-                                                              socket.gethostname()
-                                                              ))
+    print(f"## System: {torch.get_num_threads()} CPU cores with "
+          f"{os.cpu_count()} threads and "
+          f"{torch.cuda.device_count()} GPUs on {socket.gethostname()}")
     if device == 'cpu':
         print("## Using: CPU with ID {}".format(device))
     else:
