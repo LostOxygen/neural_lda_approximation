@@ -135,7 +135,7 @@ def topic_stacking_attack(device: str, advs_eps: float, num_topics: int,
                 rounded_advs = torch.round(bow + delta)
                 test_bow_lda = rounded_advs[0].tolist()
                 test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
-                topics_lda = lda_model.get_document_topics(list(test_bow_lda))
+                topics_lda = lda_model.get_document_topics(test_bow_lda)
 
 
                 sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
@@ -268,7 +268,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id:
             rounded_advs = torch.round(bow + delta)
             test_bow_lda = rounded_advs[0].tolist()
             test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
-            topics_lda = lda_model.get_document_topics(list(test_bow_lda))
+            topics_lda = lda_model.get_document_topics(test_bow_lda)
 
             if prob_attack:
                 # calculate the cross entropy value between the adversarial example LDA output
@@ -324,7 +324,7 @@ def attack(model: nn.Sequential, bow: torch.FloatTensor, device: str, attack_id:
             rounded_advs = torch.round(bow+delta)
             test_bow_lda = rounded_advs[0].tolist()
             test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
-            topics_lda = lda_model.get_document_topics(list(test_bow_lda))
+            topics_lda = lda_model.get_document_topics(test_bow_lda)
             sorted_lda_topics = sorted(topics_lda, key=lambda x: x[1], reverse=True)
 
             if sorted_lda_topics[0][0] == target:
@@ -372,7 +372,7 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool, advs_eps: float
     test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
 
 
-    doc_topics_lda = lda_model.get_document_topics(list(test_bow_lda))
+    doc_topics_lda = lda_model.get_document_topics(test_bow_lda)
     print("\ntopic prediction of the lda model: ")
     sorted_lda_topics = sorted(doc_topics_lda, key=lambda x: x[1], reverse=True)
     # collect the probabilities to calculate the cross entropy later on
@@ -427,7 +427,7 @@ def evaluate(num_topics: int, attack_id: int, random_test: bool, advs_eps: float
         test_bow_lda = manipulated_bow[0].tolist()
         test_bow_lda = [(id, int(counting)) for id, counting in enumerate(test_bow_lda)]
 
-        doc_topics_lda = lda_model.get_document_topics(list(test_bow_lda))
+        doc_topics_lda = lda_model.get_document_topics(test_bow_lda)
         print("\ntopic prediction of the lda model on advs. example: ")
 
 
