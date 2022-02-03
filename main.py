@@ -9,6 +9,7 @@ import argparse
 import os
 import torch
 import numpy as np
+
 from utils.words import save_train_data
 from utils.lda import train_lda
 from utils.train import train
