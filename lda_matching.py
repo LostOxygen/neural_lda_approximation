@@ -94,14 +94,24 @@ def main():
         # train a reference lda for the current topic number
         print("--> Training reference LDA")
         ref_lda = train_lda(curr_num_topics, "_ref_"+str(curr_num_topics))
-        ref_lda_output = torch.tensor(ref_lda.get_document_topics(bow))
+        ref_lda_output = ref_lda.get_document_topics(bow)
+        # create an empty vector with CURR_NUM_ZEROS elements to insert the probs
+        # of the corresponding topic id (so they have always the same size)
+        ref_lda_vec = torch.zeros(curr_num_topics)
+        for bow_tuple in ref_lda_output:
+            ref_lda_vec[bow_tuple[0]] = torch.tensor(bow_tuple[1])
 
         for _ in tqdm(range(LDA_ITERS)):
             # train LDA_ITERS new lda's to compare their results with CE
             tmp_lda = train_lda(curr_num_topics, "_tmp_10")
-            tmp_lda_output = torch.tensor(tmp_lda.get_document_topics(bow))
+            tmp_lda_output = tmp_lda.get_document_topics(bow)
+            # create an empty vector with CURR_NUM_ZEROS elements to insert the probs
+            # of the corresponding topic id (so they have always the same size)
+            tmp_lda_vec = torch.zeros(curr_num_topics)
+            for bow_tuple in tmp_lda_output:
+                tmp_lda_vec[bow_tuple[0]] = torch.tensor(bow_tuple[1])
 
-            loss = loss_class(ref_lda_output, tmp_lda_output)
+            loss = loss_class(ref_lda_vec, tmp_lda_vec)
             temp_avg_ce_value += loss
             print(f"--> loss between current lda and reference: {loss}")
 
