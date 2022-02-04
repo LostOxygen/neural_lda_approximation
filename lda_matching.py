@@ -93,7 +93,7 @@ def main():
 
         # train a reference lda for the current topic number
         print("--> Training reference LDA")
-        ref_lda = train_lda(curr_num_topics, "_ref_10")
+        ref_lda = train_lda(curr_num_topics, "_ref_"+str(curr_num_topics))
         ref_lda_output = torch.tensor(ref_lda.get_document_topics(bow))
 
         for _ in tqdm(range(LDA_ITERS)):
