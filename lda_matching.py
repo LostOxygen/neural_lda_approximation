@@ -21,7 +21,7 @@ LDA_PATH = "./models/"
 DATA_PATH = "./data/wiki_data.tar" # the path of the data on which the lda should be tested
 NUM_TOPICS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 # number of iterations of lda trainings per topic number to calc. the average CE
-LDA_ITERS = 10
+LDA_ITERS = 1
 
 
 def train_lda(num_topics: int, path_suffix: str) -> gensim.models.LdaMulticore:
@@ -37,11 +37,10 @@ def train_lda(num_topics: int, path_suffix: str) -> gensim.models.LdaMulticore:
     # compute the lda model
     ldamodel = LdaMulticore(bow_list, num_topics=num_topics,
                             id2word=dictionary,
-                            passes=2, workers=os.cpu_count(),
+                            passes=1, workers=os.cpu_count(),
                             eval_every=0)
 
     save_path = "matching_lda_model" + str(path_suffix)
-    print("[ saving lda model in {} ]".format(save_path))
     if not os.path.isdir(LDA_PATH):
         os.mkdir(LDA_PATH)
 
@@ -95,12 +94,12 @@ def main():
         # train a reference lda for the current topic number
         print("--> Training reference LDA")
         ref_lda = train_lda(curr_num_topics, "_ref_10")
-        ref_lda_output = ref_lda.get_document_topics(bow)
+        ref_lda_output = torch.tensor(ref_lda.get_document_topics(bow))
 
         for _ in tqdm(range(LDA_ITERS)):
             # train LDA_ITERS new lda's to compare their results with CE
             tmp_lda = train_lda(curr_num_topics, "_tmp_10")
-            tmp_lda_output = tmp_lda.get_document_topics(bow)
+            tmp_lda_output = torch.tensor(tmp_lda.get_document_topics(bow))
 
             loss = loss_class(ref_lda_output, tmp_lda_output)
             temp_avg_ce_value += loss
