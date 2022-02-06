@@ -1,6 +1,7 @@
 # custom project ignores
 data/*
 models/
+plots/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
