@@ -79,7 +79,7 @@ def save_results(diff_tensor: torch.Tensor) -> None:
     fig.tight_layout()
 
     plt.savefig(PLOT_PATH+"difference_plot.png")
-    plt.show()
+    # plt.show()
 
 
 def main():
