@@ -40,7 +40,7 @@ def train_lda(num_topics: int, path_suffix: str) -> gensim.models.LdaMulticore:
                             passes=1, workers=os.cpu_count(),
                             eval_every=0)
 
-    save_path = "matching_lda_model" + str(path_suffix)
+    save_path = LDA_PATH + "matching_lda_model" + str(path_suffix)
     if not os.path.isdir(LDA_PATH):
         os.mkdir(LDA_PATH)
 
