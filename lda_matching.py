@@ -37,7 +37,7 @@ def train_lda(num_topics: int, path_suffix: str) -> gensim.models.LdaMulticore:
     # compute the lda model
     ldamodel = LdaMulticore(bow_list, num_topics=num_topics,
                             id2word=dictionary,
-                            passes=0, workers=os.cpu_count(),
+                            passes=1, workers=os.cpu_count(),
                             eval_every=0)
 
     save_path = LDA_PATH + "matching_lda_model" + str(path_suffix)
