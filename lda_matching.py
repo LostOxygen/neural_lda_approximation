@@ -37,7 +37,7 @@ def train_lda(num_topics: int, path_suffix: str) -> gensim.models.LdaMulticore:
     # compute the lda model
     ldamodel = LdaMulticore(bow_list, num_topics=num_topics,
                             id2word=dictionary,
-                            passes=1, workers=os.cpu_count(),
+                            passes=0, workers=os.cpu_count(),
                             eval_every=0)
 
     save_path = LDA_PATH + "matching_lda_model" + str(path_suffix)
@@ -97,7 +97,7 @@ def main():
         ref_lda_output = ref_lda.get_document_topics(bow)
         # create an empty vector with CURR_NUM_ZEROS elements to insert the probs
         # of the corresponding topic id (so they have always the same size)
-        ref_lda_vec = torch.zeros(curr_num_topics)
+        ref_lda_vec = torch.zeros(curr_num_topics) + 1e-10
         for bow_tuple in ref_lda_output:
             ref_lda_vec[bow_tuple[0]] = torch.tensor(bow_tuple[1])
 
@@ -107,7 +107,7 @@ def main():
             tmp_lda_output = tmp_lda.get_document_topics(bow)
             # create an empty vector with CURR_NUM_ZEROS elements to insert the probs
             # of the corresponding topic id (so they have always the same size)
-            tmp_lda_vec = torch.zeros(curr_num_topics)
+            tmp_lda_vec = torch.zeros(curr_num_topics) + 1e-10
             for bow_tuple in tmp_lda_output:
                 tmp_lda_vec[bow_tuple[0]] = torch.tensor(bow_tuple[1])
 
