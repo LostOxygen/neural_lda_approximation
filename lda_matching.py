@@ -13,12 +13,14 @@ import webdataset as wds
 import gensim
 from gensim.models import LdaMulticore
 from tqdm import tqdm
+from matplotlib import pyplot as plt
 
 from utils.words import save_train_data
 from utils.network import KLDivLoss
 
 LDA_PATH = "./models/"
 DATA_PATH = "./data/wiki_data.tar" # the path of the data on which the lda should be tested
+PLOT_PATH = "./plots/"
 NUM_TOPICS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 # number of iterations of lda trainings per topic number to calc. the average CE
 LDA_ITERS = 1
@@ -51,6 +53,33 @@ def train_lda(num_topics: int, path_suffix: str) -> gensim.models.LdaMulticore:
         print(exception_lda)
 
     return ldamodel
+
+
+def save_results(diff_tensor: torch.Tensor) -> None:
+    """helper function to visualize and save the resulting differences as an graph image
+       :param diff_tensor: tensor with tuples of (NUM_TOPICS, difference)
+
+       :return: None
+    """
+    print("Average differences per topic number: ")
+    print(diff_tensor)
+
+    if not os.path.isdir(PLOT_PATH):
+        os.mkdir(PLOT_PATH)
+
+    plt.style.use("ggplot")
+    fig, axs = plt.subplots()
+    idx = list(range(len(diff_tensor)))
+    axs.bar(idx, list(diff_tensor.values()), width=0.35, label="KLDiv")
+    axs.set_xticks(idx)
+    axs.set_xticklabels(list(diff_tensor.keys()), rotation=85)
+    axs.legend()
+    axs.set_xlabel("# Topics")
+    axs.set_ylabel("Difference-Value")
+    fig.tight_layout()
+
+    plt.savefig(PLOT_PATH+"difference_plot.png")
+    plt.show()
 
 
 def main():
@@ -118,7 +147,7 @@ def main():
         temp_avg_ce_value /= LDA_ITERS # calculate the average CE value
         avg_ce_results[curr_num_topics] = temp_avg_ce_value # add to the dictionary
 
-    print(avg_ce_results)
+    save_results(avg_ce_results)
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.
