@@ -22,8 +22,8 @@ LDA_PATH = "./models/"
 DATA_PATH = "./data/wiki_data.tar" # the path of the data on which the lda should be tested
 PLOT_PATH = "./plots/"
 NUM_TOPICS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-# number of iterations of lda trainings per topic number to calc. the average CE
-LDA_ITERS = 1
+# number of iterations of lda bow evaluations per topic number to calc. the average CE
+LDA_ITERS = 100
 
 
 def train_lda(num_topics: int, path_suffix: str) -> gensim.models.LdaMulticore:
@@ -103,14 +103,6 @@ def main():
     dataset = wds.WebDataset(DATA_PATH).decode().shuffle(1000).to_tuple("input.pyd",
                                                                         "output.pyd")
     loader = DataLoader((dataset.batched(1)), batch_size=None, num_workers=0)
-    _, bow = next(enumerate(loader))
-
-    # convert sparse tensor back into dense form
-    bow = bow[0].to_dense()
-
-    # convert tensor back into bag of words list for the lda model
-    bow = bow[0].tolist()
-    bow = [(id, int(counting)) for id, counting in enumerate(bow)]
 
     # dictionary for the CE results in the format: {NUM_TOPIC : avg. CE value}
     avg_ce_results = dict()
@@ -124,16 +116,30 @@ def main():
         print("--> Training reference LDA")
         ref_lda = train_lda(curr_num_topics, "_ref_"+str(curr_num_topics))
         ref_lda_output = ref_lda.get_document_topics(bow)
-        # create an empty vector with CURR_NUM_ZEROS elements to insert the probs
-        # of the corresponding topic id (so they have always the same size)
-        ref_lda_vec = torch.zeros(curr_num_topics) + 1e-10
-        for bow_tuple in ref_lda_output:
-            ref_lda_vec[bow_tuple[0]] = torch.tensor(bow_tuple[1])
 
+        # train LDA_ITERS new lda's to compare their results with CE
+        print("--> Training second LDA")
+        tmp_lda = train_lda(curr_num_topics, "_tmp_"+str(curr_num_topics))
+        tmp_lda_output = tmp_lda.get_document_topics(bow)
+
+        # iterate over LDA_ITERS bag of words to calculat the average difference
         for _ in tqdm(range(LDA_ITERS)):
-            # train LDA_ITERS new lda's to compare their results with CE
-            tmp_lda = train_lda(curr_num_topics, "_tmp_10")
-            tmp_lda_output = tmp_lda.get_document_topics(bow)
+            # get a new bow from the dataloader
+            _, bow = next(enumerate(loader))
+
+            # convert sparse tensor back into dense form
+            bow = bow[0].to_dense()
+
+            # convert tensor back into bag of words list for the lda model
+            bow = bow[0].tolist()
+            bow = [(id, int(counting)) for id, counting in enumerate(bow)]
+
+            # create an empty vector with CURR_NUM_ZEROS elements to insert the probs
+            # of the corresponding topic id (so they have always the same size)
+            ref_lda_vec = torch.zeros(curr_num_topics) + 1e-10
+            for bow_tuple in ref_lda_output:
+                ref_lda_vec[bow_tuple[0]] = torch.tensor(bow_tuple[1])
+
             # create an empty vector with CURR_NUM_ZEROS elements to insert the probs
             # of the corresponding topic id (so they have always the same size)
             tmp_lda_vec = torch.zeros(curr_num_topics) + 1e-10
