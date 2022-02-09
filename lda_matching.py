@@ -103,6 +103,15 @@ def main():
     dataset = wds.WebDataset(DATA_PATH).decode().shuffle(1000).to_tuple("input.pyd",
                                                                         "output.pyd")
     loader = DataLoader((dataset.batched(1)), batch_size=None, num_workers=0)
+    # get the first bow from the dataloader
+    _, bow = next(enumerate(loader))
+
+    # convert sparse tensor back into dense form
+    bow = bow[0].to_dense()
+
+    # convert tensor back into bag of words list for the lda model
+    bow = bow[0].tolist()
+    bow = [(id, int(counting)) for id, counting in enumerate(bow)]
 
     # dictionary for the CE results in the format: {NUM_TOPIC : avg. CE value}
     avg_ce_results = dict()
