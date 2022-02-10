@@ -121,15 +121,25 @@ def main():
         print(f"--> Current number of topics: {curr_num_topics}")
         temp_avg_ce_value = 0.0
 
-        # train a reference lda for the current topic number
-        print("--> Training reference LDA")
-        ref_lda = train_lda(curr_num_topics, "_ref_"+str(curr_num_topics))
-        ref_lda_output = ref_lda.get_document_topics(bow)
+        # train or load a reference lda for the current topic number
+        if os.path.isfile("./models/matching_lda_model_ref_"+str(curr_num_topics)):
+            print("--> Loading reference LDA")
+            ref_lda = LdaMulticore.load("./models/matching_lda_model_ref_"+str(curr_num_topics))
+            ref_lda_output = ref_lda.get_document_topics(bow)
+        else:
+            print("--> Training reference LDA")
+            ref_lda = train_lda(curr_num_topics, "_ref_"+str(curr_num_topics))
+            ref_lda_output = ref_lda.get_document_topics(bow)
 
-        # train LDA_ITERS new lda's to compare their results with CE
-        print("--> Training second LDA")
-        tmp_lda = train_lda(curr_num_topics, "_tmp_"+str(curr_num_topics))
-        tmp_lda_output = tmp_lda.get_document_topics(bow)
+        # train or load LDA_ITERS new lda's to compare their results with CE
+        if os.path.isfile("./models/matching_lda_model_tmp_"+str(curr_num_topics)):
+            print("--> Loading second LDA")
+            tmp_lda = LdaMulticore.load("./models/matching_lda_model_tmp_"+str(curr_num_topics))
+            tmp_lda_output = tmp_lda.get_document_topics(bow)
+        else:
+            print("--> Training second LDA")
+            tmp_lda = train_lda(curr_num_topics, "_tmp_"+str(curr_num_topics))
+            tmp_lda_output = tmp_lda.get_document_topics(bow)
 
         # iterate over LDA_ITERS bag of words to calculat the average difference
         for _ in tqdm(range(LDA_ITERS)):
