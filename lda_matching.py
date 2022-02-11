@@ -126,7 +126,9 @@ def compare_lda_models(lda1: LdaMulticore, lda2: LdaMulticore,
         # rectified. A value of 0 means, they are orthogonal to each other
         cos_sim = cosine_similarity(torch.FloatTensor([tuple[0] for tuple in topics1]),
                                     torch.FloatTensor([tuple[0] for tuple in topics2]))
-        tmp_diff += cos_sim
+
+        # since cos_sim is the distance between the vectors, (1 - cos_sim) is the similarity
+        tmp_diff += (1- cos_sim)
 
     loss = tmp_diff / num_topics
     print(f"--> loss between current two LDAs: {loss}")
