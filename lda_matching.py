@@ -87,7 +87,7 @@ def save_results(diff_tensor: torch.Tensor) -> None:
     idx = list(range(len(diff_tensor)))
     axs.bar(idx, list(diff_tensor.values()), width=0.35, label="Cosine_Similarity")
     axs.set_xticks(idx)
-    axs.set_yticks(list(range(0, 1, 0.1)))
+    axs.set_yticks(np.arange(0., 1.1, 0.1))
     axs.set_xticklabels(list(diff_tensor.keys()), rotation=85)
     axs.legend()
     axs.set_xlabel("# Topics")
