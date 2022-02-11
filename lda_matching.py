@@ -3,10 +3,12 @@
 # !/usr/bin/env python3
 import time
 import socket
+from pprint import pprint
 import datetime
 import argparse
 import os
 import torch
+import torch.nn as nn
 from torch.utils.data import DataLoader
 import numpy as np
 import webdataset as wds
@@ -22,13 +24,26 @@ LDA_PATH = "./models/"
 DATA_PATH = "./data/wiki_data.tar" # the path of the data on which the lda should be tested
 PLOT_PATH = "./plots/"
 NUM_TOPICS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
-# number of iterations of lda bow evaluations per topic number to calc. the average CE
-LDA_ITERS = 100
 
 
-def train_lda(num_topics: int, path_suffix: str) -> gensim.models.LdaMulticore:
+def plot_difference(mdiff: np.array, num_topics: int) -> None:
+    """Helper function to plot difference between models.
+       :mdiff: the confusion matrix between the two models
+       :num_topics: number of topics used to train the two LDA models
+
+       :retrn: None (but saves the figure)
+    """
+    _, axs = plt.subplots(figsize=(18, 14))
+    data = axs.imshow(mdiff, cmap='RdBu_r', origin='lower')
+    plt.title(f"Topic Difference Matrix for {num_topics} topics")
+    plt.colorbar(data)
+    plt.savefig(PLOT_PATH+f"difference_matrix_{num_topics}.png")
+    #plt.show()
+
+
+def train_lda(num_topics: int, path_suffix: str) -> LdaMulticore:
     """helper function for lda training
-       :param num_topics: number of topics for the lda
+       :param num_topics: number of topics to train the LDA model
        :param path_suffix: suffix for the save path of the lda model
 
        :return: trained LDA Model
@@ -70,7 +85,7 @@ def save_results(diff_tensor: torch.Tensor) -> None:
     plt.style.use("ggplot")
     fig, axs = plt.subplots()
     idx = list(range(len(diff_tensor)))
-    axs.bar(idx, list(diff_tensor.values()), width=0.35, label="KLDiv")
+    axs.bar(idx, list(diff_tensor.values()), width=0.35, label="Cosine_Similarity")
     axs.set_xticks(idx)
     axs.set_xticklabels(list(diff_tensor.keys()), rotation=85)
     axs.legend()
@@ -80,6 +95,42 @@ def save_results(diff_tensor: torch.Tensor) -> None:
 
     plt.savefig(PLOT_PATH+"difference_plot.png")
     # plt.show()
+
+
+def compare_lda_models(lda1: LdaMulticore, lda2: LdaMulticore,
+                       num_topics: int) -> torch.Tensor:
+    """helper function to calculate the difference between two lda models according to their
+       topic-word distribution.
+       :param lda1: the first of the two LDA models
+       :param lda2: the second LDA models
+       :param num_topics: number of topics used to train the two LDA models
+
+       :return: torch.tensor
+    """
+    # loss_class = KLDivLoss()
+    cosine_similarity = nn.CosineSimilarity(dim=0, eps=1e-8)
+    dictionary = gensim.corpora.Dictionary.load_from_text("./data/wikipedia_dump/wiki_wordids.txt")
+
+    # compute the confusion matrix between two models
+    mdiff, _ = lda1.diff(lda2, distance='hellinger', num_words=50)
+    plot_difference(mdiff, num_topics)
+
+    # iterate over every topic and calculate the average difference
+    tmp_diff = 0.0
+    for topic_id in range(num_topics):
+        topics1 = lda1.get_topic_terms(topicid=topic_id, topn=len(dictionary))
+        topics2 = lda2.get_topic_terms(topicid=topic_id, topn=len(dictionary))
+
+        # calculate the similarity using the cosine similarity where -1 means the two topic vectors
+        # are completely opposite to each other, while 1 means they are completely similar and
+        # rectified. A value of 0 means, they are orthogonal to each other
+        cos_sim = cosine_similarity(torch.FloatTensor([tuple[0] for tuple in topics1]),
+                                    torch.FloatTensor([tuple[0] for tuple in topics2]))
+        tmp_diff += cos_sim
+
+    loss = tmp_diff / num_topics
+    print(f"--> loss between current two LDAs: {loss}")
+    return loss
 
 
 def main():
@@ -114,65 +165,32 @@ def main():
     bow = [(id, int(counting)) for id, counting in enumerate(bow)]
 
     # dictionary for the CE results in the format: {NUM_TOPIC : avg. CE value}
-    avg_ce_results = dict()
-    loss_class = KLDivLoss()
+    avg_results = dict()
 
     for curr_num_topics in NUM_TOPICS:
         print(f"--> Current number of topics: {curr_num_topics}")
-        temp_avg_ce_value = 0.0
 
         # train or load a reference lda for the current topic number
         if os.path.isfile("./models/matching_lda_model_ref_"+str(curr_num_topics)):
             print("--> Loading reference LDA")
             ref_lda = LdaMulticore.load("./models/matching_lda_model_ref_"+str(curr_num_topics))
-            ref_lda_output = ref_lda.get_document_topics(bow)
         else:
             print("--> Training reference LDA")
             ref_lda = train_lda(curr_num_topics, "_ref_"+str(curr_num_topics))
-            ref_lda_output = ref_lda.get_document_topics(bow)
 
         # train or load LDA_ITERS new lda's to compare their results with CE
         if os.path.isfile("./models/matching_lda_model_tmp_"+str(curr_num_topics)):
             print("--> Loading second LDA")
             tmp_lda = LdaMulticore.load("./models/matching_lda_model_tmp_"+str(curr_num_topics))
-            tmp_lda_output = tmp_lda.get_document_topics(bow)
         else:
             print("--> Training second LDA")
             tmp_lda = train_lda(curr_num_topics, "_tmp_"+str(curr_num_topics))
-            tmp_lda_output = tmp_lda.get_document_topics(bow)
 
-        # iterate over LDA_ITERS bag of words to calculat the average difference
-        for _ in tqdm(range(LDA_ITERS)):
-            # get a new bow from the dataloader
-            _, bow = next(enumerate(loader))
+        # compare the two LDA models and build the result matrix
+        curr_lda_diff = compare_lda_models(ref_lda, tmp_lda, curr_num_topics)
+        avg_results[curr_num_topics] = curr_lda_diff # add to the dictionary
 
-            # convert sparse tensor back into dense form
-            bow = bow[0].to_dense()
-
-            # convert tensor back into bag of words list for the lda model
-            bow = bow[0].tolist()
-            bow = [(id, int(counting)) for id, counting in enumerate(bow)]
-
-            # create an empty vector with CURR_NUM_ZEROS elements to insert the probs
-            # of the corresponding topic id (so they have always the same size)
-            ref_lda_vec = torch.zeros(curr_num_topics) + 1e-10
-            for bow_tuple in ref_lda_output:
-                ref_lda_vec[bow_tuple[0]] = torch.tensor(bow_tuple[1])
-
-            # create an empty vector with CURR_NUM_ZEROS elements to insert the probs
-            # of the corresponding topic id (so they have always the same size)
-            tmp_lda_vec = torch.zeros(curr_num_topics) + 1e-10
-            for bow_tuple in tmp_lda_output:
-                tmp_lda_vec[bow_tuple[0]] = torch.tensor(bow_tuple[1])
-
-            loss = loss_class(ref_lda_vec, tmp_lda_vec)
-            temp_avg_ce_value += loss
-            print(f"--> loss between current lda and reference: {loss}")
-
-        temp_avg_ce_value /= LDA_ITERS # calculate the average CE value
-        avg_ce_results[curr_num_topics] = temp_avg_ce_value # add to the dictionary
-
-    save_results(avg_ce_results)
+    save_results(avg_results)
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.
