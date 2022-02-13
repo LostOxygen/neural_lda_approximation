@@ -70,12 +70,15 @@ def train_lda(num_topics: int, path_suffix: str) -> LdaMulticore:
     return ldamodel
 
 
-def save_results(diff_tensor: torch.Tensor) -> None:
+def save_results(similarity_tensor: torch.Tensor, diff_tensor: torch.Tensor) -> None:
     """helper function to visualize and save the resulting differences as an graph image
-       :param diff_tensor: tensor with tuples of (NUM_TOPICS, difference)
+       :param similarity_tensor: tensor with tuples of (NUM_TOPICS, similarites) -> cosine sim.
+       :param diff_tensor: tensor with tuples of (NUM_TOPICS, difference) -> KLDiv
 
        :return: None
     """
+    print("Average similarities per topic number: ")
+    print(similarity_tensor)
     print("Average differences per topic number: ")
     print(diff_tensor)
 
@@ -86,6 +89,7 @@ def save_results(diff_tensor: torch.Tensor) -> None:
     fig, axs = plt.subplots()
     idx = list(range(len(diff_tensor)))
     axs.bar(idx, list(diff_tensor.values()), width=0.35, label="Cosine_Similarity")
+    axs.bar(idx, list(similarity_tensor.values()), width=0.35, label="KLDiv")
     axs.set_xticks(idx)
     axs.set_yticks(np.arange(0., 1.1, 0.1))
     axs.set_xticklabels(list(diff_tensor.keys()), rotation=85)
@@ -108,7 +112,8 @@ def compare_lda_models(lda1: LdaMulticore, lda2: LdaMulticore,
 
        :return: torch.tensor
     """
-    # loss_class = KLDivLoss()
+    print("--> Compare LDA models")
+    kldiv_loss = KLDivLoss()
     cosine_similarity = nn.CosineSimilarity(dim=0, eps=1e-8)
     dictionary = gensim.corpora.Dictionary.load_from_text("./data/wikipedia_dump/wiki_wordids.txt")
 
@@ -117,23 +122,41 @@ def compare_lda_models(lda1: LdaMulticore, lda2: LdaMulticore,
     plot_difference(mdiff, num_topics)
 
     # iterate over every topic and calculate the average difference
-    tmp_diff = 0.0
+    tmp_sim = 0.0 # temp var for cosine similarity
+    tmp_diff = 0.0 # temp var for kullback leibler divergence
     for topic_id in range(num_topics):
         topics1 = lda1.get_topic_terms(topicid=topic_id, topn=len(dictionary))
         topics2 = lda2.get_topic_terms(topicid=topic_id, topn=len(dictionary))
 
+        # vectors with the word IDs in their contribution order for the current topic ID
+        word_id_vec1 = [tuple[0] for tuple in topics1]
+        word_id_vec2 = [tuple[0] for tuple in topics2]
+
         # calculate the similarity using the cosine similarity where -1 means the two topic vectors
         # are completely opposite to each other, while 1 means they are completely similar and
         # rectified. A value of 0 means, they are orthogonal to each other
-        cos_sim = cosine_similarity(torch.FloatTensor([tuple[0] for tuple in topics1]),
-                                    torch.FloatTensor([tuple[0] for tuple in topics2]))
+        cos_sim = cosine_similarity(torch.FloatTensor(word_id_vec1),
+                                    torch.FloatTensor(word_id_vec2))
 
         # since cos_sim is the distance between the vectors, (1 - cos_sim) is the similarity
-        tmp_diff += (1- cos_sim)
+        tmp_sim += (1- cos_sim)
 
-    loss = tmp_diff / num_topics
-    print(f"--> loss between current two LDAs: {loss}")
-    return loss
+        # empty vectors for the word probabilities to calculate their difference
+        word_prob_vec1 = torch.zeros(len(dictionary))
+        word_prob_vec2 = torch.zeros(len(dictionary))
+
+        for (word_tuple1, word_tuple2) in zip(topics1, topics2)):
+            # assign the word probabilites to their ID in the vector
+            word_prob_vec1[word_tuple1[0]] = torch.FloatTensor([word_tuple1[1]])
+            word_prob_vec2[word_tuple2[0]] = torch.FloatTensor([word_tuple2[1]])
+
+            tmp_diff += kldiv_loss(word_prob_vec1, word_prob_vec2)
+
+    difference = tmp_diff / num_topics
+    similarity = tmp_sim / num_topics
+    print(f"--> similarity between current two LDA word vectors: {similarity}")
+    print(f"--> difference between current two LDA prob. distributions: {difference}")
+    return similarity, difference
 
 
 def main():
@@ -167,8 +190,9 @@ def main():
     bow = bow[0].tolist()
     bow = [(id, int(counting)) for id, counting in enumerate(bow)]
 
-    # dictionary for the CE results in the format: {NUM_TOPIC : avg. CE value}
-    avg_results = dict()
+    # dictionary for the similarity results in the format: {NUM_TOPIC : similarity}
+    similarity_results = dict() # similarity between the word vectors and their order
+    difference_results = dict() # difference between the probability distributions
 
     for curr_num_topics in NUM_TOPICS:
         print(f"--> Current number of topics: {curr_num_topics}")
@@ -190,10 +214,12 @@ def main():
             tmp_lda = train_lda(curr_num_topics, "_tmp_"+str(curr_num_topics))
 
         # compare the two LDA models and build the result matrix
-        curr_lda_diff = compare_lda_models(ref_lda, tmp_lda, curr_num_topics)
-        avg_results[curr_num_topics] = curr_lda_diff # add to the dictionary
+        curr_lda_sim, curr_lda_diff = compare_lda_models(ref_lda, tmp_lda, curr_num_topics)
+        # add to the dictionary
+        similarity_results[curr_num_topics] = curr_lda_sim
+        difference_results[curr_num_topics] = curr_lda_diff
 
-    save_results(avg_results)
+    save_results(similarity_results, difference_results)
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.
