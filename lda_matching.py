@@ -145,7 +145,7 @@ def compare_lda_models(lda1: LdaMulticore, lda2: LdaMulticore,
         word_prob_vec1 = torch.zeros(len(dictionary))
         word_prob_vec2 = torch.zeros(len(dictionary))
 
-        for (word_tuple1, word_tuple2) in zip(topics1, topics2)):
+        for (word_tuple1, word_tuple2) in zip(topics1, topics2):
             # assign the word probabilites to their ID in the vector
             word_prob_vec1[word_tuple1[0]] = torch.FloatTensor([word_tuple1[1]])
             word_prob_vec2[word_tuple2[0]] = torch.FloatTensor([word_tuple2[1]])
