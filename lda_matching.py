@@ -88,8 +88,9 @@ def save_results(similarity_tensor: torch.Tensor, diff_tensor: torch.Tensor) -> 
     plt.style.use("ggplot")
     fig, axs = plt.subplots()
     idx = list(range(len(diff_tensor)))
-    axs.bar(idx, list(diff_tensor.values()), width=0.35, label="Cosine_Similarity")
-    axs.bar(idx, list(similarity_tensor.values()), width=0.35, label="KLDiv")
+    width = 0.35
+    axs.bar(idx - width/2, list(diff_tensor.values()), width=width, label="KLDiv")
+    axs.bar(idx + width/2, list(similarity_tensor.values()), width=width, label="Cosine_Similarity")
     axs.set_xticks(idx)
     axs.set_yticks(np.arange(0., 1.1, 0.1))
     axs.set_xticklabels(list(diff_tensor.keys()), rotation=85)
