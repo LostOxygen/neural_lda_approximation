@@ -3,10 +3,11 @@
 # !/usr/bin/env python3
 import time
 import socket
-from pprint import pprint
 import datetime
 import argparse
 import os
+from pprint import pprint
+import operator
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -14,7 +15,6 @@ import numpy as np
 import webdataset as wds
 import gensim
 from gensim.models import LdaMulticore
-from tqdm import tqdm
 from matplotlib import pyplot as plt
 
 from utils.words import save_train_data
@@ -23,7 +23,7 @@ from utils.network import KLDivLoss
 LDA_PATH = "./models/"
 DATA_PATH = "./data/wiki_data.tar" # the path of the data on which the lda should be tested
 PLOT_PATH = "./plots/"
-NUM_TOPICS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+NUM_TOPICS = [10]#, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
 
 def plot_difference(mdiff: np.array, num_topics: int) -> None:
@@ -70,33 +70,34 @@ def train_lda(num_topics: int, path_suffix: str) -> LdaMulticore:
     return ldamodel
 
 
-def save_results(similarity_tensor: torch.Tensor, diff_tensor: torch.Tensor) -> None:
+def save_results(similarity_dict: dict, diff_dict: dict) -> None:
     """helper function to visualize and save the resulting differences as an graph image
-       :param similarity_tensor: tensor with tuples of (NUM_TOPICS, similarites) -> cosine sim.
-       :param diff_tensor: tensor with tuples of (NUM_TOPICS, difference) -> KLDiv
+       :param similarity_dict: dict of tensors with tuples of (NUM_TOPICS, similarites) -> cos sim.
+       :param diff_dict: diction of tensors with tuples of (NUM_TOPICS, difference) -> KLDiv
 
        :return: None
     """
-    print("Average similarities per topic number: ")
-    print(similarity_tensor)
-    print("Average differences per topic number: ")
-    print(diff_tensor)
+    print("Average similarity per topic number: ")
+    pprint(similarity_dict)
+    print("Average difference per topic number: ")
+    pprint(diff_dict)
 
     if not os.path.isdir(PLOT_PATH):
         os.mkdir(PLOT_PATH)
 
     plt.style.use("ggplot")
     fig, axs = plt.subplots()
-    idx = np.arange(len(diff_tensor))
+    idx = np.arange(len(diff_dict))
     width = 0.35
-    axs.bar(idx - width/2, list(diff_tensor.values()), width=width, label="KLDiv")
-    axs.bar(idx + width/2, list(similarity_tensor.values()), width=width, label="Cosine_Similarity")
+    axs.bar(idx - width/2, list(diff_dict.values()), width=width, label="KLDiv")
+    axs.bar(idx + width/2, list(similarity_dict.values()), width=width, label="Cosine_Similarity")
     axs.set_xticks(idx)
-    axs.set_yticks(np.arange(0., 1.1, 0.1))
-    axs.set_xticklabels(list(diff_tensor.keys()), rotation=85)
+    # use the biggest value of the difference dictionary as the maximum reference for y-axis
+    axs.set_yticks(np.arange(0., diff_dict[max(diff_dict, key=diff_dict.get)], 0.1))
+    axs.set_xticklabels(list(diff_dict.keys()), rotation=85)
     axs.legend()
     axs.set_xlabel("# Topics")
-    axs.set_ylabel("Difference-Value")
+    axs.set_ylabel("Difference & Similarity")
     fig.tight_layout()
 
     plt.savefig(PLOT_PATH+"difference_plot.png")
@@ -143,20 +144,21 @@ def compare_lda_models(lda1: LdaMulticore, lda2: LdaMulticore,
         tmp_sim += (1- cos_sim)
 
         # empty vectors for the word probabilities to calculate their difference
-        word_prob_vec1 = torch.zeros(len(dictionary))
-        word_prob_vec2 = torch.zeros(len(dictionary))
+        word_prob_vec1 = torch.zeros(len(dictionary)) + 10e-10
+        word_prob_vec2 = torch.zeros(len(dictionary)) + 10e-10
 
         for (word_tuple1, word_tuple2) in zip(topics1, topics2):
             # assign the word probabilites to their ID in the vector
             word_prob_vec1[word_tuple1[0]] = torch.FloatTensor([word_tuple1[1]])
             word_prob_vec2[word_tuple2[0]] = torch.FloatTensor([word_tuple2[1]])
 
-            tmp_diff += kldiv_loss(word_prob_vec1, word_prob_vec2)
+        tmp_diff += kldiv_loss(word_prob_vec1, word_prob_vec2)
 
-    difference = tmp_diff / num_topics
     similarity = tmp_sim / num_topics
     print(f"--> similarity between current two LDA word vectors: {similarity}")
+    difference = tmp_diff / num_topics
     print(f"--> difference between current two LDA prob. distributions: {difference}")
+
     return similarity, difference
 
 
