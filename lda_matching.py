@@ -69,15 +69,15 @@ def train_lda(num_topics: int, path_suffix: str) -> LdaMulticore:
     return ldamodel
 
 
-def save_results(similarity_dict: dict, diff_dict: dict) -> None:
+def save_results(sim_dict: dict, diff_dict: dict) -> None:
     """helper function to visualize and save the resulting differences as an graph image
-       :param similarity_dict: dict of tensors with tuples of (NUM_TOPICS, similarites) -> cos sim.
+       :param sim_dict: dict of tensors with tuples of (NUM_TOPICS, similarites) -> cos sim.
        :param diff_dict: diction of tensors with tuples of (NUM_TOPICS, difference) -> KLDiv
 
        :return: None
     """
     print("Average similarity per topic number: ")
-    pprint(similarity_dict)
+    pprint(sim_dict)
     print("Average difference per topic number: ")
     pprint(diff_dict)
 
@@ -88,12 +88,29 @@ def save_results(similarity_dict: dict, diff_dict: dict) -> None:
     fig, axs = plt.subplots()
     idx = np.arange(len(diff_dict))
     width = 0.35
-    axs.bar(idx - width/2, list(diff_dict.values()), width=width, label="KLDiv")
-    axs.bar(idx + width/2, list(similarity_dict.values()), width=width, label="Cosine_Similarity")
+    rects1 = axs.bar(idx - width/2, list(diff_dict.values()), width=width, label="KLDiv")
+    rects2 = axs.bar(idx + width/2, list(sim_dict.values()), width=width, label="Cosine_Similarity")
     axs.set_xticks(idx)
     # use the biggest value of the difference dictionary as the maximum reference for y-axis
     axs.set_yticks(np.arange(0., diff_dict[max(diff_dict, key=diff_dict.get)], 0.1))
     axs.set_xticklabels(list(diff_dict.keys()), rotation=85)
+
+    for rect in rects1:
+        height = rect.get_height()
+        axs.annotate('{}'.format(np.round(height, 2)),
+                     xy=(rect.get_x() + rect.get_width() / 2, height),
+                     xytext=(0, 3),  # 3 points vertical offset
+                     textcoords="offset points",
+                     ha='center', va='bottom')
+
+    for rect in rects2:
+        height = rect.get_height()
+        axs.annotate('{}'.format(np.round(height, 2)),
+                     xy=(rect.get_x() + rect.get_width() / 2, height),
+                     xytext=(0, 3),  # 3 points vertical offset
+                     textcoords="offset points",
+                     ha='center', va='bottom')
+
     axs.legend()
     axs.set_xlabel("# Topics")
     axs.set_ylabel("Difference & Similarity")
