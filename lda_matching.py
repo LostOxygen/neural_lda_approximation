@@ -7,7 +7,6 @@ import datetime
 import argparse
 import os
 from pprint import pprint
-import operator
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
@@ -23,7 +22,7 @@ from utils.network import KLDivLoss
 LDA_PATH = "./models/"
 DATA_PATH = "./data/wiki_data.tar" # the path of the data on which the lda should be tested
 PLOT_PATH = "./plots/"
-NUM_TOPICS = [10]#, 20, 30, 40, 50, 60, 70, 80, 90, 100]
+NUM_TOPICS = [10, 20, 30, 40, 50, 60, 70, 80, 90, 100]
 
 
 def plot_difference(mdiff: np.array, num_topics: int) -> None:
