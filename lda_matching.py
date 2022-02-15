@@ -87,7 +87,7 @@ def save_results(similarity_tensor: torch.Tensor, diff_tensor: torch.Tensor) -> 
 
     plt.style.use("ggplot")
     fig, axs = plt.subplots()
-    idx = list(range(len(diff_tensor)))
+    idx = np.arange(len(diff_tensor))
     width = 0.35
     axs.bar(idx - width/2, list(diff_tensor.values()), width=width, label="KLDiv")
     axs.bar(idx + width/2, list(similarity_tensor.values()), width=width, label="Cosine_Similarity")
