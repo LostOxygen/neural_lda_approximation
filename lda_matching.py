@@ -189,26 +189,6 @@ def main():
     print("#"*55)
     print()
 
-    if not os.path.isfile(DATA_PATH):
-        print("## no train/test data found .. creating new one")
-        # save the lda model data as training data with labels
-        save_train_data(freq_id=None)
-
-    # prepare the loaded data
-    print("--> Loading Dataset to memory")
-    dataset = wds.WebDataset(DATA_PATH).decode().shuffle(1000).to_tuple("input.pyd",
-                                                                        "output.pyd")
-    loader = DataLoader((dataset.batched(1)), batch_size=None, num_workers=0)
-    # get the first bow from the dataloader
-    _, bow = next(enumerate(loader))
-
-    # convert sparse tensor back into dense form
-    bow = bow[0].to_dense()
-
-    # convert tensor back into bag of words list for the lda model
-    bow = bow[0].tolist()
-    bow = [(id, int(counting)) for id, counting in enumerate(bow)]
-
     # dictionary for the similarity results in the format: {NUM_TOPIC : similarity}
     similarity_results = dict() # similarity between the word vectors and their order
     difference_results = dict() # difference between the probability distributions
