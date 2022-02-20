@@ -9,14 +9,11 @@ import os
 from pprint import pprint
 import torch
 import torch.nn as nn
-from torch.utils.data import DataLoader
 import numpy as np
-import webdataset as wds
 import gensim
 from gensim.models import LdaMulticore
 from matplotlib import pyplot as plt
 
-from utils.words import save_train_data
 from utils.network import KLDivLoss
 
 LDA_PATH = "./models/"
@@ -53,7 +50,7 @@ def train_lda(num_topics: int, path_suffix: str) -> LdaMulticore:
     # compute the lda model
     ldamodel = LdaMulticore(bow_list, num_topics=num_topics,
                             id2word=dictionary,
-                            passes=1, workers=os.cpu_count(),
+                            passes=20, workers=os.cpu_count(),
                             eval_every=0)
 
     save_path = LDA_PATH + "matching_lda_model" + str(path_suffix)
@@ -120,8 +117,61 @@ def save_results(sim_dict: dict, diff_dict: dict) -> None:
     # plt.show()
 
 
-def compare_lda_models(lda1: LdaMulticore, lda2: LdaMulticore,
-                       num_topics: int) -> torch.Tensor:
+def match_topics(lda1: LdaMulticore, lda2: LdaMulticore, topic_id: int, num_topics: int) -> int:
+    """helper function to calculate the difference between two lda models according to their
+       topic-word distribution.
+       :param lda1: the first of the two LDA models
+       :param lda2: the second LDA models
+       :param topic_id: number of topics used to train the two LDA models
+       :param num_topics: number of topics used to train the two LDA models
+
+       :return: the most similar topic of the second LDA w.r.t the chosen topic of the first LDA
+    """
+    print("--> Match topics")
+    kldiv_loss = KLDivLoss()
+    dictionary = gensim.corpora.Dictionary.load_from_text("./data/wikipedia_dump/wiki_wordids.txt")
+
+    topics1 = lda1.get_topic_terms(topicid=topic_id, topn=len(dictionary))
+    word_prob_vec1 = torch.zeros(len(dictionary)) + 10e-10
+
+    # initialize the start values and differences
+    topics2 = lda2.get_topic_terms(topicid=topic_id, topn=len(dictionary))
+    word_prob_vec2 = torch.zeros(len(dictionary)) + 10e-10
+
+    # calculate the difference for the initially chosen topic on both LDAs
+    for (word_tuple1, word_tuple2) in zip(topics1, topics2):
+        # assign the word probabilites to their ID in the vector
+        word_prob_vec1[word_tuple1[0]] = torch.FloatTensor([word_tuple1[1]])
+        word_prob_vec2[word_tuple2[0]] = torch.FloatTensor([word_tuple2[1]])
+
+    difference = kldiv_loss(word_prob_vec1, word_prob_vec2) # initial difference of the same topic
+    print(f"Initial diff. of the same topic ({topic_id}) on both LDAs: {difference:.{5}f}")
+    best_topic = topic_id # the topic itself. Gets updated if a better is found
+
+    # iterate over every topic of the second LDA to calculate their difference and find the best
+    for curr_topic_id in range(num_topics):
+        topics2 = lda2.get_topic_terms(topicid=curr_topic_id, topn=len(dictionary))
+        # empty vectors for the word probabilities to calculate their difference
+        word_prob_vec2 = torch.zeros(len(dictionary)) + 10e-10
+
+        for word_tuple in topics2:
+            # assign the word probabilites to their ID in the vector
+            word_prob_vec2[word_tuple[0]] = torch.FloatTensor([word_tuple[1]])
+
+        curr_difference = kldiv_loss(word_prob_vec1, word_prob_vec2)
+
+        if curr_difference < difference:
+            # if the current diff. is better, update the reference diff. and the best topic id
+            difference = curr_difference
+            best_topic = curr_topic_id
+
+    print(f"Topic {topic_id} ({dictionary[topic_id]}) of LDA1 got matched with topic "
+          f"{best_topic} ({dictionary[best_topic]}) from LDA2 "
+          f"with kldiv: {difference:.{5}f}")
+    return best_topic
+
+
+def compare_lda_models(lda1: LdaMulticore, lda2: LdaMulticore, num_topics: int) -> torch.Tensor:
     """helper function to calculate the difference between two lda models according to their
        topic-word distribution.
        :param lda1: the first of the two LDA models
@@ -136,7 +186,7 @@ def compare_lda_models(lda1: LdaMulticore, lda2: LdaMulticore,
     dictionary = gensim.corpora.Dictionary.load_from_text("./data/wikipedia_dump/wiki_wordids.txt")
 
     # compute the confusion matrix between two models
-    mdiff, _ = lda1.diff(lda2, distance='hellinger', num_words=50)
+    mdiff, _ = lda1.diff(lda2, distance='hellinger', num_words=500)
     plot_difference(mdiff, num_topics)
 
     # iterate over every topic and calculate the average difference
@@ -171,9 +221,10 @@ def compare_lda_models(lda1: LdaMulticore, lda2: LdaMulticore,
         tmp_diff += kldiv_loss(word_prob_vec1, word_prob_vec2)
 
     similarity = tmp_sim / num_topics
-    print(f"--> similarity between current two LDA word vectors: {similarity}")
+    print(f"--> similarity between current two LDA word vectors: {similarity:.{5}f}")
     difference = tmp_diff / num_topics
-    print(f"--> difference between current two LDA prob. distributions: {difference}")
+    print(f"--> difference between current two LDA prob. distributions: {difference:.{5}f}")
+    del dictionary
 
     return similarity, difference
 
@@ -211,6 +262,9 @@ def main():
         else:
             print("--> Training second LDA")
             tmp_lda = train_lda(curr_num_topics, "_tmp_"+str(curr_num_topics))
+
+        # match random selected topics as a test
+        _ = match_topics(ref_lda, tmp_lda, np.random.randint(curr_num_topics), curr_num_topics)
 
         # compare the two LDA models and build the result matrix
         curr_lda_sim, curr_lda_diff = compare_lda_models(ref_lda, tmp_lda, curr_num_topics)
