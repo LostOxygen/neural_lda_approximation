@@ -157,7 +157,7 @@ def compare_lda_models(lda1: LdaMulticore, lda2: LdaMulticore,
                                     torch.FloatTensor(word_id_vec2))
 
         # since cos_sim is the distance between the vectors, (1 - cos_sim) is the similarity
-        tmp_sim += (1- cos_sim)
+        tmp_sim += (1 - cos_sim)
 
         # empty vectors for the word probabilities to calculate their difference
         word_prob_vec1 = torch.zeros(len(dictionary)) + 10e-10
