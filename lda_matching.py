@@ -50,7 +50,7 @@ def train_lda(num_topics: int, path_suffix: str) -> LdaMulticore:
     # compute the lda model
     ldamodel = LdaMulticore(bow_list, num_topics=num_topics,
                             id2word=dictionary,
-                            passes=20, workers=os.cpu_count(),
+                            passes=5, workers=os.cpu_count(),
                             eval_every=0)
 
     save_path = LDA_PATH + "matching_lda_model" + str(path_suffix)
