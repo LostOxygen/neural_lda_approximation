@@ -30,7 +30,7 @@ def plot_difference(mdiff: np.array, num_topics: int) -> None:
        :retrn: None (but saves the figure)
     """
     _, axs = plt.subplots(figsize=(18, 14))
-    data = axs.imshow(mdiff, cmap='RdBu_r', origin='lower')
+    data = axs.imshow(mdiff, cmap="RdBu_r", origin="lower")
     plt.title(f"Topic Difference Matrix for {num_topics} topics")
     plt.colorbar(data)
     plt.savefig(PLOT_PATH+f"difference_matrix_{num_topics}.png")
@@ -94,19 +94,19 @@ def save_results(sim_dict: dict, diff_dict: dict) -> None:
 
     for rect in rects1:
         height = rect.get_height()
-        axs.annotate('{}'.format(np.round(height, 2)),
+        axs.annotate("{}".format(np.round(height, 2)),
                      xy=(rect.get_x() + rect.get_width() / 2, height),
                      xytext=(0, 3),  # 3 points vertical offset
                      textcoords="offset points",
-                     ha='center', va='bottom')
+                     ha="center", va="bottom")
 
     for rect in rects2:
         height = rect.get_height()
-        axs.annotate('{}'.format(np.round(height, 2)),
+        axs.annotate("{}".format(np.round(height, 2)),
                      xy=(rect.get_x() + rect.get_width() / 2, height),
                      xytext=(0, 3),  # 3 points vertical offset
                      textcoords="offset points",
-                     ha='center', va='bottom')
+                     ha="center", va="bottom")
 
     axs.legend()
     axs.set_xlabel("# Topics")
@@ -186,7 +186,7 @@ def compare_lda_models(lda1: LdaMulticore, lda2: LdaMulticore, num_topics: int) 
     dictionary = gensim.corpora.Dictionary.load_from_text("./data/wikipedia_dump/wiki_wordids.txt")
 
     # compute the confusion matrix between two models
-    mdiff, _ = lda1.diff(lda2, distance='hellinger', num_words=500)
+    mdiff, _ = lda1.diff(lda2, distance="hellinger", num_words=500)
     plot_difference(mdiff, num_topics)
 
     # iterate over every topic and calculate the average difference
