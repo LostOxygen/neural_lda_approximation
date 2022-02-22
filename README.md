@@ -1,5 +1,5 @@
 # Neural LDA Approximation
-Approximation of the latent dirichlet allocation per deep neural networks.
+Approximation of the latent dirichlet allocation via deep neural networks.
 
 ### Preliminaries
 Download NLTK corpora which are used for defining stopwords and lemmatizing stuff:
