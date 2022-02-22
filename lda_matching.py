@@ -132,11 +132,11 @@ def match_topics(lda1: LdaMulticore, lda2: LdaMulticore, topic_id: int, num_topi
     dictionary = gensim.corpora.Dictionary.load_from_text("./data/wikipedia_dump/wiki_wordids.txt")
 
     topics1 = lda1.get_topic_terms(topicid=topic_id, topn=len(dictionary))
-    word_prob_vec1 = torch.zeros(len(dictionary)) + 10e-10
+    word_prob_vec1 = torch.zeros(len(dictionary)) + 10e-16
 
     # initialize the start values and differences
     topics2 = lda2.get_topic_terms(topicid=topic_id, topn=len(dictionary))
-    word_prob_vec2 = torch.zeros(len(dictionary)) + 10e-10
+    word_prob_vec2 = torch.zeros(len(dictionary)) + 10e-16
 
     # calculate the difference for the initially chosen topic on both LDAs
     for (word_tuple1, word_tuple2) in zip(topics1, topics2):
@@ -152,7 +152,7 @@ def match_topics(lda1: LdaMulticore, lda2: LdaMulticore, topic_id: int, num_topi
     for curr_topic_id in range(num_topics):
         topics2 = lda2.get_topic_terms(topicid=curr_topic_id, topn=len(dictionary))
         # empty vectors for the word probabilities to calculate their difference
-        word_prob_vec2 = torch.zeros(len(dictionary)) + 10e-10
+        word_prob_vec2 = torch.zeros(len(dictionary)) + 10e-16
 
         for word_tuple in topics2:
             # assign the word probabilites to their ID in the vector
@@ -210,8 +210,8 @@ def compare_lda_models(lda1: LdaMulticore, lda2: LdaMulticore, num_topics: int) 
         tmp_sim += (1 - cos_sim)
 
         # empty vectors for the word probabilities to calculate their difference
-        word_prob_vec1 = torch.zeros(len(dictionary)) + 10e-10
-        word_prob_vec2 = torch.zeros(len(dictionary)) + 10e-10
+        word_prob_vec1 = torch.zeros(len(dictionary)) + 10e-16
+        word_prob_vec2 = torch.zeros(len(dictionary)) + 10e-16
 
         for (word_tuple1, word_tuple2) in zip(topics1, topics2):
             # assign the word probabilites to their ID in the vector
