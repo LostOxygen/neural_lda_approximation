@@ -15,6 +15,7 @@ from gensim.models import LdaMulticore
 from matplotlib import pyplot as plt
 
 from utils.network import KLDivLoss
+from utils.lda_matcher import LdaMatcher
 
 LDA_PATH = "./models/"
 DATA_PATH = "./data/wiki_data.tar" # the path of the data on which the lda should be tested
@@ -229,7 +230,7 @@ def compare_lda_models(lda1: LdaMulticore, lda2: LdaMulticore, num_topics: int) 
     return similarity, difference
 
 
-def main():
+def main(benchmark: bool) -> None:
     """main function for lda matching"""
     start = time.perf_counter()
     print("\n\n\n"+"#"*55)
@@ -240,39 +241,48 @@ def main():
     print("#"*55)
     print()
 
-    # dictionary for the similarity results in the format: {NUM_TOPIC : similarity}
-    similarity_results = dict() # similarity between the word vectors and their order
-    difference_results = dict() # difference between the probability distributions
+    if benchmark:
+        # dictionary for the similarity results in the format: {NUM_TOPIC : similarity}
+        similarity_results = dict() # similarity between the word vectors and their order
+        difference_results = dict() # difference between the probability distributions
 
-    for curr_num_topics in NUM_TOPICS:
-        print(f"--> Current number of topics: {curr_num_topics}")
+        for curr_num_topics in NUM_TOPICS:
+            print(f"--> Current number of topics: {curr_num_topics}")
 
-        # train or load a reference lda for the current topic number
-        if os.path.isfile("./models/matching_lda_model_ref_"+str(curr_num_topics)):
-            print("--> Loading reference LDA")
-            ref_lda = LdaMulticore.load("./models/matching_lda_model_ref_"+str(curr_num_topics))
-        else:
-            print("--> Training reference LDA")
-            ref_lda = train_lda(curr_num_topics, "_ref_"+str(curr_num_topics))
+            # train or load a reference lda for the current topic number
+            if os.path.isfile("./models/matching_lda_model_ref_"+str(curr_num_topics)):
+                print("--> Loading reference LDA")
+                ref_lda = LdaMulticore.load("./models/matching_lda_model_ref_"+str(curr_num_topics))
+            else:
+                print("--> Training reference LDA")
+                ref_lda = train_lda(curr_num_topics, "_ref_"+str(curr_num_topics))
 
-        # train or load LDA_ITERS new lda's to compare their results with CE
-        if os.path.isfile("./models/matching_lda_model_tmp_"+str(curr_num_topics)):
-            print("--> Loading second LDA")
-            tmp_lda = LdaMulticore.load("./models/matching_lda_model_tmp_"+str(curr_num_topics))
-        else:
-            print("--> Training second LDA")
-            tmp_lda = train_lda(curr_num_topics, "_tmp_"+str(curr_num_topics))
+            # train or load LDA_ITERS new lda's to compare their results with CE
+            if os.path.isfile("./models/matching_lda_model_tmp_"+str(curr_num_topics)):
+                print("--> Loading second LDA")
+                tmp_lda = LdaMulticore.load("./models/matching_lda_model_tmp_"+str(curr_num_topics))
+            else:
+                print("--> Training second LDA")
+                tmp_lda = train_lda(curr_num_topics, "_tmp_"+str(curr_num_topics))
 
-        # match random selected topics as a test
-        _ = match_topics(ref_lda, tmp_lda, np.random.randint(curr_num_topics), curr_num_topics)
+            # match random selected topics as a test
+            _ = match_topics(ref_lda, tmp_lda, np.random.randint(curr_num_topics), curr_num_topics)
 
-        # compare the two LDA models and build the result matrix
-        curr_lda_sim, curr_lda_diff = compare_lda_models(ref_lda, tmp_lda, curr_num_topics)
-        # add to the dictionary
-        similarity_results[curr_num_topics] = curr_lda_sim
-        difference_results[curr_num_topics] = curr_lda_diff
+            # compare the two LDA models and build the result matrix
+            curr_lda_sim, curr_lda_diff = compare_lda_models(ref_lda, tmp_lda, curr_num_topics)
+            # add to the dictionary
+            similarity_results[curr_num_topics] = curr_lda_sim
+            difference_results[curr_num_topics] = curr_lda_diff
 
-    save_results(similarity_results, difference_results)
+        save_results(similarity_results, difference_results)
+    else:
+        # create a list with loaded LDA's
+        lda_list = list()
+        for _ in range(5):
+            lda_list.append(LdaMulticore.load("./models/matching_lda_model_ref_10"))
+            lda_list.append(LdaMulticore.load("./models/matching_lda_model_tmp_10"))
+
+        _ = LdaMatcher(lda_list, 0.5, 10)
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.
@@ -281,5 +291,7 @@ def main():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--benchmark", "-b", help="runs the difference and similarity benchmarks",
+                        action="store_true", default=False)
     args = parser.parse_args()
     main(**vars(args))
