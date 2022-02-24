@@ -22,6 +22,47 @@ class LdaMatcher:
         self.num_topics = num_topics
         self.dictionary = Dictionary.load_from_text("./data/wikipedia_dump/wiki_wordids.txt")
         self.mapping = self.__create_mapping()
+        self.core_topics = self.__find_core_topics()
+
+
+    def __kl_div(self, y: float, y_hat: float) -> float:
+        """standard kullback leibler divergence loss as described in:
+           https://pytorch.org/docs/stable/generated/torch.nn.KLDivLoss.html
+        """
+        return F.kl_div(y.log(), y_hat, None, None, reduction="sum")
+
+
+    def __find_core_topics(self):
+        """private method to loop over the generated mapping and list the topics which exist
+           in every LDA.
+        """
+        print("INFO: Listing the core topics of all LDAs")
+
+        # core_topics is a dictionary where the topic ID is the key and a list of tuples are
+        # the value. Every tupel contains the word ID with the corresponding probability
+        core_topics = dict()
+
+        for idx in tqdm(range(self.mapping.shape[0]), desc="Mapping", leave=False):
+            for idy in range(self.mapping.shape[1]):
+                for topic_id in range(self.mapping.shape[2]):
+
+                    # if the topic id is the same (so no new mapping exists), the topic is a
+                    # candidate for a "core-topic"
+                    if topic_id == self.mapping[idx, idy, topic_id]:
+                        lda = self.lda_list[idx]
+                        lda_topic_terms = lda.get_topic_terms(topicid=topic_id,
+                                                              topn=len(self.dictionary))
+                        # if the entry does not exist, add it
+                        if core_topics.get(topic_id) is None:
+                            core_topics[topic_id] = lda_topic_terms
+                        # if the entry already exists, add the probabilites to the accord word IDs
+                        else:
+                            core_topics[topic_id] = [(tuple[0], tuple[1] + new_probs[1]) for \
+                                                     tuple, new_probs in zip(core_topics[topic_id],
+                                                                             lda_topic_terms)]
+
+
+        return core_topics
 
 
     def __create_mapping(self) -> torch.Tensor:
@@ -88,8 +129,6 @@ class LdaMatcher:
         return self.mapping
 
 
-    def __kl_div(self, y: float, y_hat: float) -> float:
-        """standard kullback leibler divergence loss as described in:
-           https://pytorch.org/docs/stable/generated/torch.nn.KLDivLoss.html
-        """
-        return F.kl_div(y.log(), y_hat, None, None, reduction="sum")
+    def get_core_topics(self) -> torch.Tensor:
+        """helper method which returns the core topics of every LDA"""
+        return self.core_topics
