@@ -32,17 +32,18 @@ class LdaMatcher:
         mapping = torch.zeros(
             (len(self.lda_list),
              len(self.lda_list),
-             self.num_topics,
              self.num_topics)
         )
 
+        # mapping from the first LDA
         for idx, lda1 in enumerate(tqdm(self.lda_list, desc="First LDA", leave=False)):
+            # to the second LDA
             for idy, lda2 in enumerate(tqdm(self.lda_list, desc="Second LDA", leave=False)):
                 for topic_id in tqdm(range(self.num_topics), desc="Topics", leave=False):
                     # if the two LDA's are the same, skip iteration and use the identity mapping
                     if lda1 == lda2:
                         # identity mapping
-                        mapping[idx, idy] = topic_id
+                        mapping[idx, idy, topic_id] = topic_id
                         continue
 
                     else:
@@ -56,16 +57,14 @@ class LdaMatcher:
                             # assign the word probabilites to their ID in the vector
                             word_prob_vec1[word_tuple1[0]] = torch.FloatTensor([word_tuple1[1]])
 
+                        # the topic itself. Gets updated if a better is found
+                        best_topic = topic_id
                         # iterate over the topics for the second LDA
                         for comp_topic_id in range(self.num_topics):
                             # initialize the start values and differences
                             topics2 = lda2.get_topic_terms(topicid=comp_topic_id,
                                                            topn=len(self.dictionary))
                             word_prob_vec2 = torch.zeros(len(self.dictionary)) + 10e-16
-
-                            # the topic itself. Gets updated if a better is found
-                            best_topic = comp_topic_id
-
                             # iterate over every topic of the second LDA to calculate
                             # their difference and find the best
                             for word_tuple2 in topics2:
@@ -78,11 +77,9 @@ class LdaMatcher:
                                 # if the current diff. is better, update the reference diff.
                                 # and the best topic id
                                 difference = curr_difference
-                                best_topic = topic_id
+                                best_topic = comp_topic_id
 
-                                mapping[idx, idy] = best_topic
-                            else:
-                                mapping[idx, idy] = topic_id
+                        mapping[idx, idy, topic_id] = best_topic
         return mapping
 
 

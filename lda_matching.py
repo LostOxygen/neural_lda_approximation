@@ -278,11 +278,12 @@ def main(benchmark: bool) -> None:
     else:
         # create a list with loaded LDA's
         lda_list = list()
-        for _ in range(5):
+        for _ in range(1):
             lda_list.append(LdaMulticore.load("./models/matching_lda_model_ref_10"))
             lda_list.append(LdaMulticore.load("./models/matching_lda_model_tmp_10"))
 
-        _ = LdaMatcher(lda_list, 0.5, 10)
+        matcher = LdaMatcher(lda_list, 0.5, 10)
+        print(matcher.get_mapping())
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.
