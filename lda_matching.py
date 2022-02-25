@@ -284,7 +284,7 @@ def main(benchmark: bool) -> None:
 
         matcher = LdaMatcher(lda_list, 0.5, 10)
         print(matcher.get_mapping())
-        print(matcher.get_core_topics())
+        print(matcher.get_core_topic_candidates())
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.

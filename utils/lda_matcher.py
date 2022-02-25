@@ -20,6 +20,7 @@ class LdaMatcher:
         self.lda_list = lda_list
         self.threshold = threshold
         self.num_topics = num_topics
+        self.core_topic_candidates = list(range(self.num_topics)) # used to find the core topics
         self.dictionary = Dictionary.load_from_text("./data/wikipedia_dump/wiki_wordids.txt")
         self.mapping = self.__create_mapping()
         self.core_topics = self.__find_core_topics()
@@ -42,25 +43,25 @@ class LdaMatcher:
         # the value. Every tupel contains the word ID with the corresponding probability
         core_topics = dict()
 
-        for idx in tqdm(range(self.mapping.shape[0]), desc="Mapping", leave=False):
-            for idy in range(self.mapping.shape[1]):
-                for topic_id in range(self.mapping.shape[2]):
+        for lda in tqdm(self.lda_list, desc="LDAs", leave=False):
+            for topic_id in self.core_topic_candidates:
+                lda_topic_terms = lda.get_topic_terms(topicid=topic_id, topn=len(self.dictionary))
+                # if the entry does not exist, add it
+                if core_topics.get(topic_id) is None:
+                    core_topics[topic_id] = lda_topic_terms
+                # if the entry already exists, add the probabilites to the accord word IDs
+                else:
+                    core_topics[topic_id] = [(tuple[0], tuple[1] + new_probs[1]) for \
+                                             tuple, new_probs in zip(core_topics[topic_id],
+                                                                     lda_topic_terms)]
 
-                    # if the topic id is the same (so no new mapping exists), the topic is a
-                    # candidate for a "core-topic"
-                    if topic_id == self.mapping[idx, idy, topic_id]:
-                        lda = self.lda_list[idx]
-                        lda_topic_terms = lda.get_topic_terms(topicid=topic_id,
-                                                              topn=len(self.dictionary))
-                        # if the entry does not exist, add it
-                        if core_topics.get(topic_id) is None:
-                            core_topics[topic_id] = lda_topic_terms
-                        # if the entry already exists, add the probabilites to the accord word IDs
-                        else:
-                            core_topics[topic_id] = [(tuple[0], tuple[1] + new_probs[1]) for \
-                                                     tuple, new_probs in zip(core_topics[topic_id],
-                                                                             lda_topic_terms)]
+        # normalize the core_topics for every topic word distributen w.r.t
+        # to the length of the candidate list
+        for topic_id in self.core_topic_candidates:
+            core_topics[topic_id] = [(tuple[0], (tuple[1]/len(self.core_topic_candidates))) \
+                                     for tuple in core_topics[topic_id]]
 
+        # TODO: core_topic word probabilites have to be normalized to a [0, 1] distribution again
 
         return core_topics
 
@@ -121,12 +122,21 @@ class LdaMatcher:
                                 best_topic = comp_topic_id
 
                         mapping[idx, idy, topic_id] = best_topic
+                        # if the topic got mapped, it is no longer a candidate for the core topics
+                        # therefore it's topic ID gets removed from the list
+                        if topic_id != best_topic and best_topic in self.core_topic_candidates:
+                            self.core_topic_candidates.remove(best_topic)
         return mapping
 
 
     def get_mapping(self) -> torch.Tensor:
         """helper method which returns the generated LDA mapping"""
         return self.mapping
+
+
+    def get_core_topic_candidates(self) -> list:
+        """helper method which returns the list with the core topic candidates"""
+        return self.core_topic_candidates
 
 
     def get_core_topics(self) -> torch.Tensor:
