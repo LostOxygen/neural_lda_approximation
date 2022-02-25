@@ -124,8 +124,8 @@ class LdaMatcher:
                         mapping[idx, idy, topic_id] = best_topic
                         # if the topic got mapped, it is no longer a candidate for the core topics
                         # therefore it's topic ID gets removed from the list
-                        if topic_id != best_topic and best_topic in self.core_topic_candidates:
-                            self.core_topic_candidates.remove(best_topic)
+                        if topic_id != best_topic and topic_id in self.core_topic_candidates:
+                            self.core_topic_candidates.remove(topic_id)
         return mapping
 
 
