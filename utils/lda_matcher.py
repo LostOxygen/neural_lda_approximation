@@ -143,11 +143,11 @@ class LdaMatcher:
         return self.mapping
 
 
-    def get_core_topic_candidates(self) -> list:
-        """helper method which returns the list with the core topic candidates"""
-        return self.core_topic_candidates
+    def get_core_topic_ids(self) -> list:
+        """helper method which returns the list with the plain core topic IDs"""
+        return self.core_topics.keys()
 
 
-    def get_core_topics(self) -> torch.Tensor:
-        """helper method which returns the core topics of every LDA"""
+    def get_core_topics(self) -> dict:
+        """helper method which returns the core topic dictionary of every LDA"""
         return self.core_topics
