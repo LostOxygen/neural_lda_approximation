@@ -145,7 +145,7 @@ class LdaMatcher:
 
     def get_core_topic_ids(self) -> list:
         """helper method which returns the list with the plain core topic IDs"""
-        return self.core_topics.keys()
+        return list(self.core_topics.keys())
 
 
     def get_core_topics(self) -> dict:
