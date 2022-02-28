@@ -14,11 +14,11 @@ class LdaMatcher:
         threshold: if the similarity between two lda topics
         num_topics: number of LDA topics
         core_topic_candidates: a list of core_topic candidates, gets updates during the mapping
-        dictionary: the gensim dictionary for the LDAs
+        dictionary: the gensim dictionary of the LDAs
         mapping: final tensor with topic mapping for every LDA combination
         core_topics: final dictionary with the core topics and their word distributions
     """
-    def __init__(self, lda_list: list, threshold: float, num_topics: int):
+    def __init__(self, lda_list: list, threshold: float, num_topics: int, dictionary: Dictionary):
         """Inits the LdaMatcher with a list of N LDA's and the threshold
            used for the matching (to decide if a topic is similar enough
            to another).
@@ -27,26 +27,26 @@ class LdaMatcher:
         self.threshold = threshold
         self.num_topics = num_topics
         self.core_topic_candidates = list(range(self.num_topics)) # used to find the core topics
-        self.dictionary = Dictionary.load_from_text("./data/wikipedia_dump/wiki_wordids.txt")
+        self.dictionary = dictionary
         self.mapping = self.__create_mapping()
         self.core_topics = self.__find_core_topics()
 
 
-    def __kl_div(self, y: float, y_hat: float) -> float:
+    def __kl_div(self, y: float, y_hat: float) -> torch.FloatTensor:
         """standard kullback leibler divergence loss as described in:
            https://pytorch.org/docs/stable/generated/torch.nn.KLDivLoss.html
         """
         return F.kl_div(y.log(), y_hat, None, None, reduction="sum")
 
 
-    def __find_core_topics(self):
+    def __find_core_topics(self) -> dict:
         """private method to loop over the generated mapping and list the topics which exist
            in every LDA.
         """
         print("INFO: Listing the core topics of all LDAs")
 
         # core_topics is a dictionary where the topic ID is the key and a list of tuples are
-        # the value. Every tupel contains the word ID with the corresponding probability
+        # the value. Every tuple contains the word ID with the corresponding probability
         core_topics = dict()
 
         for lda in tqdm(self.lda_list, desc="LDAs", leave=False):
