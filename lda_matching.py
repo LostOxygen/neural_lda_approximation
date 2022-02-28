@@ -12,6 +12,7 @@ import torch.nn as nn
 import numpy as np
 import gensim
 from gensim.models import LdaMulticore
+from gensim.corpora import Dictionary
 from matplotlib import pyplot as plt
 
 from utils.network import KLDivLoss
@@ -281,8 +282,9 @@ def main(benchmark: bool) -> None:
         for _ in range(1):
             lda_list.append(LdaMulticore.load("./models/matching_lda_model_ref_10"))
             lda_list.append(LdaMulticore.load("./models/matching_lda_model_tmp_10"))
+        lda_dict = Dictionary.load_from_text("./data/wikipedia_dump/wiki_wordids.txt")
 
-        matcher = LdaMatcher(lda_list, 0.5, 10)
+        matcher = LdaMatcher(lda_list=lda_list, threshold=0.5, num_topics=10, dictionary=lda_dict)
         print(matcher.get_mapping())
         print(matcher.get_core_topic_candidates())
 
