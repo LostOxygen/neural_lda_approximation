@@ -58,10 +58,13 @@ class LdaMatcher:
         # normalize the core_topics for every topic word distributen w.r.t
         # to the length of the candidate list
         for topic_id in self.core_topic_candidates:
-            core_topics[topic_id] = [(tuple[0], (tuple[1]/len(self.core_topic_candidates))) \
-                                     for tuple in core_topics[topic_id]]
+            # build a vector with all probs for a specific topic
+            topic_probs = [topic_tuple[1] for topic_tuple in core_topics[topic_id]]
+            # then use the softmax to normalize the probability distribution
+            topic_probs = F.softmax(torch.tensor(topic_probs), dim=-1)
 
-        # TODO: core_topic word probabilites have to be normalized to a [0, 1] distribution again
+            core_topics[topic_id] = [(tuple[0], tuple[1]) for tuple in \
+                                     zip(core_topics[topic_id], topic_probs)]
 
         return core_topics
 
