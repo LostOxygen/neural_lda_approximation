@@ -10,7 +10,13 @@ class LdaMatcher:
     """Class to hold and perform matching functionality for LDA's
 
     Attributes:
-
+        lda_list: list of LDAs to create the matching for
+        threshold: if the similarity between two lda topics
+        num_topics: number of LDA topics
+        core_topic_candidates: a list of core_topic candidates, gets updates during the mapping
+        dictionary: the gensim dictionary for the LDAs
+        mapping: final tensor with topic mapping for every LDA combination
+        core_topics: final dictionary with the core topics and their word distributions
     """
     def __init__(self, lda_list: list, threshold: float, num_topics: int):
         """Inits the LdaMatcher with a list of N LDA's and the threshold
