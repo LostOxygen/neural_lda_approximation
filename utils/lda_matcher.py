@@ -4,6 +4,7 @@ import torch
 import torch.nn.functional as F
 from tqdm.auto import tqdm
 from gensim.corpora import Dictionary
+from gensim.models import LdaMulticore
 
 
 class LdaMatcher:
@@ -138,6 +139,16 @@ class LdaMatcher:
         return mapping
 
 
+    def __get_ranking(self, topics: list, topics_targ: list):
+        """private helper method which calculates and returns the ranking based on the
+           number of intersections between the two topic lists
+        """
+        topics = set(topics)
+        topics_targ = set(topics_targ)
+
+        return len(topics.intersection(topics_targ))
+
+
     def get_mapping(self) -> torch.Tensor:
         """helper method which returns the generated LDA mapping"""
         return self.mapping
@@ -151,3 +162,31 @@ class LdaMatcher:
     def get_core_topics(self) -> dict:
         """helper method which returns the core topic dictionary of every LDA"""
         return self.core_topics
+
+
+    def get_similar_document(self, document_list: list, target_list: list) -> tuple:
+        """helper method to measure the similarity of two documents by using their
+           topic intersection length.
+        """
+        lda = self.lda_list[0]
+        # obtain the topic lists of the documents and save them in a list
+        # also only keep their topic ID and cut of the probabilities
+        topics_list = [topic_tuple[0] for topic_tuple in \
+                       [lda.get_document_topics(document, minimum_probability=0.005) \
+                        for document in document_list]]
+
+        topics_targ = [topic_tuple[0] for topic_tuple in \
+                       [lda.get_document_topics(document, minimum_probability=0.005) \
+                        for document in target_list]]
+
+        # iterate over the topics of every document and compare their topics to the target
+        document_ranking = list()
+        for _, targ_topics in enumerate(topics_targ):
+            for doc_id, topics in enumerate(topics_list):
+                document_ranking.append((doc_id, self.__get_ranking(topics, targ_topics)))
+
+        # sort the document ids w.r.t their ranking values
+        document_ranking.sort(key=lambda x: x[1])
+
+        # return the best document with its ranking score
+        return document_ranking[0]
