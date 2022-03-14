@@ -149,21 +149,6 @@ class LdaMatcher:
         return len(topics.intersection(topics_targ))
 
 
-    def get_mapping(self) -> torch.Tensor:
-        """helper method which returns the generated LDA mapping"""
-        return self.mapping
-
-
-    def get_core_topic_ids(self) -> list:
-        """helper method which returns the list with the plain core topic IDs"""
-        return list(self.core_topics.keys())
-
-
-    def get_core_topics(self) -> dict:
-        """helper method which returns the core topic dictionary of every LDA"""
-        return self.core_topics
-
-
     def get_similar_document(self, document_list: list, target_list: list) -> tuple:
         """helper method to measure the similarity of two documents by using their
            topic intersection length.
@@ -190,3 +175,18 @@ class LdaMatcher:
 
         # return the best document with its ranking score
         return document_ranking[0]
+
+
+    def get_mapping(self) -> torch.Tensor:
+        """helper method which returns the generated LDA mapping"""
+        return self.mapping
+
+
+    def get_core_topic_ids(self) -> list:
+        """helper method which returns the list with the plain core topic IDs"""
+        return list(self.core_topics.keys())
+
+
+    def get_core_topics(self) -> dict:
+        """helper method which returns the core topic dictionary of every LDA"""
+        return self.core_topics
