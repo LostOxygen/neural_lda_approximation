@@ -139,30 +139,31 @@ class LdaMatcher:
         return mapping
 
 
-    def __get_ranking(self, topics: list, topics_targ: list):
+    def __get_ranking(self, topics_i: list, topics_j: list):
         """private helper method which calculates and returns the ranking based on the
            number of intersections between the two topic lists
         """
-        topics = set(topics)
-        topics_targ = set(topics_targ)
+        topics_i = torch.tensor(topics)
+        topics_j = torch.tensor(topics_targ)
 
-        return len(topics.intersection(topics_targ))
+        return torch.dot(topics_i, topics_j.T)
 
 
-    def get_similar_document(self, document_list: list, target_list: list) -> tuple:
+    def get_similar_document(self, article_i: list, article_j: list) -> tuple:
         """helper method to measure the similarity of two documents by using their
            topic intersection length.
         """
         lda = self.lda_list[0]
         # obtain the topic lists of the documents and save them in a list
         # also only keep their topic ID and cut of the probabilities
+        # (topic embedding of the articles)
         topics_list = [topic_tuple[0] for topic_tuple in \
-                       [lda.get_document_topics(document, minimum_probability=0.005) \
-                        for document in document_list]]
+                       [lda.get_document_topics(article, minimum_probability=0.005) \
+                        for article in article_i]]
 
         topics_targ = [topic_tuple[0] for topic_tuple in \
-                       [lda.get_document_topics(document, minimum_probability=0.005) \
-                        for document in target_list]]
+                       [lda.get_document_topics(article, minimum_probability=0.005) \
+                        for article in article_j]]
 
         # iterate over the topics of every document and compare their topics to the target
         document_ranking = list()
