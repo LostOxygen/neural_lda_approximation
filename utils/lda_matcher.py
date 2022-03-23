@@ -143,8 +143,8 @@ class LdaMatcher:
         """private helper method which calculates and returns the ranking based on the
            number of intersections between the two topic lists
         """
-        topics_i = torch.tensor(topics)
-        topics_j = torch.tensor(topics_targ)
+        topics_i = torch.tensor(topics_i)
+        topics_j = torch.tensor(topics_j)
 
         return torch.dot(topics_i, topics_j.T)
 
