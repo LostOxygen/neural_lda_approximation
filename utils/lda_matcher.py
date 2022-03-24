@@ -139,55 +139,6 @@ class LdaMatcher:
         return mapping
 
 
-    def __get_ranking(self, topics_i: list, topics_j: list):
-        """private helper method which calculates and returns the ranking based on the
-           number of intersections between the two topic lists
-        """
-        topics_i = torch.tensor(topics_i)
-        topics_j = torch.tensor(topics_j)
-
-        return torch.dot(topics_i, topics_j.T)
-
-
-    def get_doc_intersections(self, article_i: list, article_j: list) -> tuple:
-        """helper method to measure the similarity of two documents by using their
-           topic intersection length.
-        """
-        # sample two random LDAs from the LDA list
-        lda_id1 = torch.randint(len(self.lda_list), (1,))[0]
-        lda_id2 = torch.randint(len(self.lda_list), (1,))[0]
-        ldas = [self.lda_list[lda_id1], self.lda_list[lda_id2]]
-        # obtain the topic lists of the documents and save them in a list
-        # also only keep their topic ID and cut of the probabilities
-        # (topic embedding of the articles)
-
-        top5_docs = []
-        for lda in ldas:
-            article_topics_i = [topic_tuple[0] for topic_tuple in \
-                                [lda.get_document_topics(article) \
-                                for article in article_i]]
-
-            article_topics_j = [topic_tuple[0] for topic_tuple in \
-                                [lda.get_document_topics(article) \
-                                for article in article_j]]
-
-            # iterate over the topics of every document and compare their topics to the target
-            for _, topics_j in enumerate(article_topics_j):
-                document_ranking = []
-                for doc_id_i, topics_i in enumerate(article_topics_i):
-                    # calculate the score between two articles
-                    score = self.__get_ranking(topics_i, topics_j)
-                    document_ranking.append((doc_id_i, score))
-
-                # sort the document ids w.r.t their ranking values
-                document_ranking.sort(key=lambda x: x[1])
-                # create a set of the top 5 documents
-                top5_docs.append({i[0] for i in document_ranking[:5]})
-
-        # return the intersection between the documents of the two LDAs
-        return top5_docs[0].intersection(top5_docs[1])
-
-
     def get_mapping(self) -> torch.Tensor:
         """helper method which returns the generated LDA mapping"""
         return self.mapping

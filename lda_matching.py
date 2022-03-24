@@ -287,7 +287,6 @@ def main(benchmark: bool) -> None:
         matcher = LdaMatcher(lda_list=lda_list, threshold=0.5, num_topics=10, dictionary=lda_dict)
         print(matcher.get_mapping())
         print(matcher.get_core_topic_ids())
-        print(matcher.get_doc_intersections(articles_i, articles_j))
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.
