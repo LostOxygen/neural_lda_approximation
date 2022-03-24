@@ -33,11 +33,11 @@ class LdaMatcher:
         self.core_topics = self.__find_core_topics()
 
 
-    def __kl_div(self, y: float, y_hat: float) -> torch.FloatTensor:
+    def __kl_div(self, y_tar: float, y_hat: float) -> torch.FloatTensor:
         """standard kullback leibler divergence loss as described in:
            https://pytorch.org/docs/stable/generated/torch.nn.KLDivLoss.html
         """
-        return F.kl_div(y.log(), y_hat, None, None, reduction="sum")
+        return F.kl_div(y_tar.log(), y_hat, None, None, reduction="sum")
 
 
     def __find_core_topics(self) -> dict:
@@ -149,33 +149,43 @@ class LdaMatcher:
         return torch.dot(topics_i, topics_j.T)
 
 
-    def get_similar_document(self, article_i: list, article_j: list) -> tuple:
+    def get_doc_intersections(self, article_i: list, article_j: list) -> tuple:
         """helper method to measure the similarity of two documents by using their
            topic intersection length.
         """
-        lda = self.lda_list[0]
+        # sample two random LDAs from the LDA list
+        lda_id1 = torch.randint(len(self.lda_list), (1,))[0]
+        lda_id2 = torch.randint(len(self.lda_list), (1,))[0]
+        ldas = [self.lda_list[lda_id1], self.lda_list[lda_id2]]
         # obtain the topic lists of the documents and save them in a list
         # also only keep their topic ID and cut of the probabilities
         # (topic embedding of the articles)
-        topics_list = [topic_tuple[0] for topic_tuple in \
-                       [lda.get_document_topics(article, minimum_probability=0.005) \
-                        for article in article_i]]
 
-        topics_targ = [topic_tuple[0] for topic_tuple in \
-                       [lda.get_document_topics(article, minimum_probability=0.005) \
-                        for article in article_j]]
+        top5_docs = []
+        for lda in ldas:
+            article_topics_i = [topic_tuple[0] for topic_tuple in \
+                                [lda.get_document_topics(article) \
+                                for article in article_i]]
 
-        # iterate over the topics of every document and compare their topics to the target
-        document_ranking = list()
-        for _, targ_topics in enumerate(topics_targ):
-            for doc_id, topics in enumerate(topics_list):
-                document_ranking.append((doc_id, self.__get_ranking(topics, targ_topics)))
+            article_topics_j = [topic_tuple[0] for topic_tuple in \
+                                [lda.get_document_topics(article) \
+                                for article in article_j]]
 
-        # sort the document ids w.r.t their ranking values
-        document_ranking.sort(key=lambda x: x[1])
+            # iterate over the topics of every document and compare their topics to the target
+            for _, topics_j in enumerate(article_topics_j):
+                document_ranking = []
+                for doc_id_i, topics_i in enumerate(article_topics_i):
+                    # calculate the score between two articles
+                    score = self.__get_ranking(topics_i, topics_j)
+                    document_ranking.append((doc_id_i, score))
 
-        # return the best document with its ranking score
-        return document_ranking[0]
+                # sort the document ids w.r.t their ranking values
+                document_ranking.sort(key=lambda x: x[1])
+                # create a set of the top 5 documents
+                top5_docs.append({i[0] for i in document_ranking[:5]})
+
+        # return the intersection between the documents of the two LDAs
+        return top5_docs[0].intersection(top5_docs[1])
 
 
     def get_mapping(self) -> torch.Tensor:

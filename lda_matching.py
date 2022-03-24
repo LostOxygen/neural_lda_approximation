@@ -278,7 +278,7 @@ def main(benchmark: bool) -> None:
         save_results(similarity_results, difference_results)
     else:
         # create a list with loaded LDA's
-        lda_list = list()
+        lda_list = []
         for _ in range(1):
             lda_list.append(LdaMulticore.load("./models/matching_lda_model_ref_10"))
             lda_list.append(LdaMulticore.load("./models/matching_lda_model_tmp_10"))
@@ -287,6 +287,7 @@ def main(benchmark: bool) -> None:
         matcher = LdaMatcher(lda_list=lda_list, threshold=0.5, num_topics=10, dictionary=lda_dict)
         print(matcher.get_mapping())
         print(matcher.get_core_topic_ids())
+        print(matcher.get_doc_intersections(articles_i, articles_j))
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.
