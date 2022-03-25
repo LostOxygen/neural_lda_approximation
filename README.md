@@ -24,7 +24,6 @@ Then compress the .mm ouput files and decompress the id->word mapping by using b
 bzip2 wiki_bow.mm
 bunzip2 wiki_wordids.txt.bz2
 ```
-And delete every file except those two.
 Training the LDA will also take several hours. So make sure to use the **--num_workers** flag to speed up the computation accordingly to your computers specs.
 
 ### How to fix *ImportError: cannot import name 'zero_gradients' from 'torch.autograd.gradcheck'*:
