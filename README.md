@@ -32,13 +32,14 @@ Training the LDA will also take several hours. So make sure to use the **--num_w
 * cd into the directory and install the latest Git version with:
 * ```python -m pip install -e .```
 
-### Usage
+## Usage:
+### 1. Attack
 ```python
 python main.py [-h] [--gpu | -g GPU] [--num_workers | -w WORKERS] [--num_topics | -t TOPICS] [--from_scratch | -s]
 ```
 e.g.
 ```python
-python3 main.py --attack_id 33 --l2_attack --advs_eps 100
+python main.py --attack_id 33 --l2_attack --advs_eps 100
 ```
 ### Arguments
 | Argument | Type | Description|
@@ -59,3 +60,17 @@ python3 main.py --attack_id 33 --l2_attack --advs_eps 100
 | -l2, --l2_attack | BOOL | flag to activate the L2 norm attack (rounded floats) instead of the LINF (whole integers) |
 | -f, --full_attack | BOOL | flag to attack every topic |
 | -v, --verbose | BOOL | flag to set Gensim to verbose mode to print the LDA information during it's training |
+
+### 2. LDA Matching
+```python
+python lda_matching.py [--benchmark | -b]
+```
+
+### 3. LDA Stability Test
+```python
+python test_lda_stability.py [--corpus_sizes | -cs]
+```
+e.g.
+```python
+python test_lda_stability.py --corpus_sizes 0.01 0.1 0.5 1.0
+```
