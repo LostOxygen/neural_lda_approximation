@@ -19,7 +19,9 @@ from matplotlib import pyplot as plt
 LDA_PATH = "./models/" # the path of the data on which the lda should be tested
 DATA_PATH = "./data/wiki_data.tar"
 PLOT_PATH = "./plots/"
-NUM_ARTICLES = 100
+NUM_ARTICLES = 10000 # number of articles to be used to calc. the mean article intersections
+NUM_TOPICS = 20 # number of topics the LDA is trained on
+NUM_TOP_ARTICLES = 5  # number of top N articles to be used for the article intersections
 
 
 def train_lda(num_topics: int, path_suffix: str, train_size: float,
@@ -55,7 +57,7 @@ def train_lda(num_topics: int, path_suffix: str, train_size: float,
     return ldamodel
 
 
-def get_similarity(topics_i: list, topics_j: list):
+def get_similarity(topics_i: list, topics_j: list) -> float:
     """Helper function which calculates and returns the ranking based on the
        number of intersections between the two topic lists.
        :param topics_i: list of topics of the first document
@@ -83,15 +85,16 @@ def visualize_results(stability_dict: dict) -> None:
     fig, axs = plt.subplots()
     idx = np.arange(len(stability_dict))
     width = 0.35
-    rects1 = axs.bar(idx - width/2, list(stability_dict.values()), width=width, label="Stability")
+    rects1 = axs.bar(idx - width/2, list(stability_dict.values()), width=width,
+                     label="Num_Inters.")
     axs.set_xticks(idx)
     # use the biggest value of the difference dictionary as the maximum reference for y-axis
-    axs.set_yticks(np.arange(0., stability_dict[max(stability_dict, key=stability_dict.get)], 0.1))
+    axs.set_yticks(np.arange(0., stability_dict[max(stability_dict, key=stability_dict.get)], 0.5))
     axs.set_xticklabels(list(stability_dict.keys()), rotation=85)
 
     for rect in rects1:
         height = rect.get_height()
-        axs.annotate("{}".format(np.round(height, 2)),
+        axs.annotate(f"{np.round(height, 2)} / {float(NUM_TOP_ARTICLES)}",
                      xy=(rect.get_x() + rect.get_width() / 2, height),
                      xytext=(0, 3),  # 3 points vertical offset
                      textcoords="offset points",
@@ -99,7 +102,7 @@ def visualize_results(stability_dict: dict) -> None:
 
     axs.legend()
     axs.set_xlabel("Corpus Size (in %)")
-    axs.set_ylabel("Stability")
+    axs.set_ylabel(f"Mean Article Intersections")
     fig.tight_layout()
 
     plt.savefig(PLOT_PATH+"stability_plot.png")
@@ -157,17 +160,17 @@ def get_lda_stability(lda1: LdaMulticore, lda2: LdaMulticore, articles_i: list,
         lda2_document_ranking.sort(key=lambda x: x[1])
 
         # create a set of the top 5 documents
-        lda1_top5_docs = {doc_tuple[0] for doc_tuple in lda1_document_ranking[:10]}
-        lda2_top5_docs = {doc_tuple[0] for doc_tuple in lda2_document_ranking[:10]}
-        print(f"LDA1 top 5 documents: {lda1_top5_docs}")
-        print(f"LDA2 top 5 documents: {lda2_top5_docs}")
+        lda1_top5_docs = {doc_tuple[0] for doc_tuple in lda1_document_ranking[:NUM_TOP_ARTICLES]}
+        lda2_top5_docs = {doc_tuple[0] for doc_tuple in lda2_document_ranking[:NUM_TOP_ARTICLES]}
+        #print(f"LDA1 top 5 documents: {lda1_top5_docs}")
+        #print(f"LDA2 top 5 documents: {lda2_top5_docs}")
 
         # add their intersection size to the total intersection size
         total_intersection_size += len(lda1_top5_docs.intersection(lda2_top5_docs))
-        print("Intersection size: ", len(lda1_top5_docs.intersection(lda2_top5_docs)))
 
     # normalize the total intersection size by the number of documents
     total_intersection_size /= len(lda1_article_topics_j)
+    print("Mean Intersection Size: ", total_intersection_size)
 
     return total_intersection_size
 
@@ -201,14 +204,14 @@ def main(corpus_sizes: float) -> None:
             lda1 = LdaMulticore.load(f"./models/stability_lda_model_A{corpus_size}")
         else:
             print("--> Training first LDA")
-            lda1 = train_lda(20, f"_A{corpus_size}", corpus_size, bow_corpus, dictionary)
+            lda1 = train_lda(NUM_TOPICS, f"_A{corpus_size}", corpus_size, bow_corpus, dictionary)
 
         if os.path.isfile(f"./models/stability_lda_model_B{corpus_size}"):
             print("--> Loading second LDA")
             lda2 = LdaMulticore.load(f"./models/stability_lda_model_B{corpus_size}")
         else:
             print("--> Training second LDA")
-            lda2 = train_lda(20, f"_B{corpus_size}", corpus_size, bow_corpus, dictionary)
+            lda2 = train_lda(NUM_TOPICS, f"_B{corpus_size}", corpus_size, bow_corpus, dictionary)
 
         articles_i = []
         articles_j = []
