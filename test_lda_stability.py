@@ -8,22 +8,18 @@ import argparse
 import os
 from pprint import pprint
 import torch
-import torch.nn as nn
 import numpy as np
 import gensim
 from gensim.models import LdaMulticore
-from gensim.corpora import Dictionary, MmCorpus
+from gensim.corpora import Dictionary, MmCorpus, IndexedCorpus
 from gensim.test.utils import get_tmpfile
 from gensim.utils import ClippedCorpus
 from matplotlib import pyplot as plt
 
-from utils.network import KLDivLoss
-from utils.lda_matcher import LdaMatcher
-
 LDA_PATH = "./models/" # the path of the data on which the lda should be tested
 DATA_PATH = "./data/wiki_data.tar"
 PLOT_PATH = "./plots/"
-NUM_ARTICLES = 10
+NUM_ARTICLES = 100
 
 
 def train_lda(num_topics: int, path_suffix: str, train_size: float,
@@ -60,7 +56,7 @@ def train_lda(num_topics: int, path_suffix: str, train_size: float,
 
 
 def get_similarity(topics_i: list, topics_j: list):
-    """helper method which calculates and returns the ranking based on the
+    """Helper function which calculates and returns the ranking based on the
        number of intersections between the two topic lists.
        :param topics_i: list of topics of the first document
        :param topics_j: list of topics of the second document
@@ -72,9 +68,47 @@ def get_similarity(topics_i: list, topics_j: list):
     return torch.dot(topics_i, topics_j.T)
 
 
-def get_lda_stability(lda1: LdaMulticore, lda2, LdaMulticore, articles_i: list,
+def visualize_results(stability_dict: dict) -> None:
+    """Helper function to plot the stability values for the corresponding corpus sizes
+       :param stability_dict: dictionary of the stability values
+       :return: None
+    """
+    print("Stability Values:")
+    pprint(stability_dict)
+
+    if not os.path.isdir(PLOT_PATH):
+        os.mkdir(PLOT_PATH)
+
+    plt.style.use("ggplot")
+    fig, axs = plt.subplots()
+    idx = np.arange(len(stability_dict))
+    width = 0.35
+    rects1 = axs.bar(idx - width/2, list(stability_dict.values()), width=width, label="Stability")
+    axs.set_xticks(idx)
+    # use the biggest value of the difference dictionary as the maximum reference for y-axis
+    axs.set_yticks(np.arange(0., stability_dict[max(stability_dict, key=stability_dict.get)], 0.1))
+    axs.set_xticklabels(list(stability_dict.keys()), rotation=85)
+
+    for rect in rects1:
+        height = rect.get_height()
+        axs.annotate("{}".format(np.round(height, 2)),
+                     xy=(rect.get_x() + rect.get_width() / 2, height),
+                     xytext=(0, 3),  # 3 points vertical offset
+                     textcoords="offset points",
+                     ha="center", va="bottom")
+
+    axs.legend()
+    axs.set_xlabel("Corpus Size (in %)")
+    axs.set_ylabel("Stability")
+    fig.tight_layout()
+
+    plt.savefig(PLOT_PATH+"stability_plot.png")
+    plt.show()
+
+
+def get_lda_stability(lda1: LdaMulticore, lda2: LdaMulticore, articles_i: list,
                       articles_j: list) -> float:
-    """helper function to measure the similarity of two documents by using their
+    """Helper function to measure the similarity of two documents by using their
        topic intersection length.
        :param lda1: first LDA model
        :param lda2: second LDA model
@@ -108,8 +142,8 @@ def get_lda_stability(lda1: LdaMulticore, lda2, LdaMulticore, articles_i: list,
         lda1_document_ranking = []
         lda2_document_ranking = []
 
-        for doc_id, lda1_topics_i, lda2_topics_i in enumerate(zip(lda1_article_topics_i,
-                                                                  lda2_article_topics_i)):
+        for doc_id, (lda1_topics_i, lda2_topics_i) in enumerate(zip(lda1_article_topics_i,
+                                                                    lda2_article_topics_i)):
 
             # calculate the score between two articles
             lda1_score = get_similarity(lda1_topics_i, lda1_topics_j)
@@ -123,14 +157,14 @@ def get_lda_stability(lda1: LdaMulticore, lda2, LdaMulticore, articles_i: list,
         lda2_document_ranking.sort(key=lambda x: x[1])
 
         # create a set of the top 5 documents
-        lda1_top5_docs = {doc_tuple[0] for doc_tuple in lda1_document_ranking[:5]}
-        lda2_top5_docs = {doc_tuple[0] for doc_tuple in lda1_document_ranking[:5]}
+        lda1_top5_docs = {doc_tuple[0] for doc_tuple in lda1_document_ranking[:10]}
+        lda2_top5_docs = {doc_tuple[0] for doc_tuple in lda2_document_ranking[:10]}
+        print(f"LDA1 top 5 documents: {lda1_top5_docs}")
+        print(f"LDA2 top 5 documents: {lda2_top5_docs}")
 
         # add their intersection size to the total intersection size
         total_intersection_size += len(lda1_top5_docs.intersection(lda2_top5_docs))
-        print("Total intersection size: ", total_intersection_size)
-
-        print(lda1_top5_docs, lda2_top5_docs, len(lda1_top5_docs.intersection(lda2_top5_docs)))
+        print("Intersection size: ", len(lda1_top5_docs.intersection(lda2_top5_docs)))
 
     # normalize the total intersection size by the number of documents
     total_intersection_size /= len(lda1_article_topics_j)
@@ -152,8 +186,9 @@ def main(corpus_sizes: float) -> None:
     print("Load corpus data..")
     dictionary = Dictionary.load_from_text("./data/wikipedia_dump/wiki_wordids.txt")
     # serialize the corpus to allow O(1) access to the data by indexing
-    bow_corpus = MmCorpus("./data/wikipedia_dump/wiki_bow.mm")
-    MmCorpus.serialize("./data/wikipedia_dump/wiki_bow.mm", bow_corpus)
+    bow_corpus = MmCorpus(fname="./data/wikipedia_dump/wiki_tfidf.mm")
+
+    # MmCorpus.serialize("./data/wikipedia_dump/wiki_bow.mm", bow_corpus)
 
     # dictionary with the corpus size as a key and the stability value as the values
     stability_values = {}
@@ -166,28 +201,27 @@ def main(corpus_sizes: float) -> None:
             lda1 = LdaMulticore.load(f"./models/stability_lda_model_A{corpus_size}")
         else:
             print("--> Training first LDA")
-            lda1 = train_lda(50, f"_A{corpus_size}", corpus_size, bow_corpus, dictionary)
+            lda1 = train_lda(20, f"_A{corpus_size}", corpus_size, bow_corpus, dictionary)
 
         if os.path.isfile(f"./models/stability_lda_model_B{corpus_size}"):
             print("--> Loading second LDA")
             lda2 = LdaMulticore.load(f"./models/stability_lda_model_B{corpus_size}")
         else:
             print("--> Training second LDA")
-            lda2 = train_lda(50, f"_B{corpus_size}", corpus_size, bow_corpus, dictionary)
+            lda2 = train_lda(20, f"_B{corpus_size}", corpus_size, bow_corpus, dictionary)
 
         articles_i = []
         articles_j = []
 
         # fill the article lists with random articles from the bow_corpus
-        for i in range(NUM_ARTICLES):
+        for _ in range(NUM_ARTICLES):
             articles_i.append(bow_corpus[np.random.randint(len(bow_corpus))])
             articles_j.append(bow_corpus[np.random.randint(len(bow_corpus))])
 
         
         stability_values[corpus_size] = get_lda_stability(lda1, lda2, articles_i, articles_j)
 
-
-    print(stability_values)
+    visualize_results(stability_values)
 
     end = time.perf_counter()
     duration = (np.round(end - start) / 60.) / 60.
