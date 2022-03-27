@@ -19,7 +19,8 @@ from matplotlib import pyplot as plt
 LDA_PATH = "./models/" # the path of the data on which the lda should be tested
 DATA_PATH = "./data/wiki_data.tar"
 PLOT_PATH = "./plots/"
-NUM_ARTICLES = 10000 # number of articles to be used to calc. the mean article intersections
+NUM_ARTICLES = 100 # number of articles to be used to find the best N ones
+NUM_TARGET_ARTICLES = 10 # number of target articles to build the mean
 NUM_TOPICS = 20 # number of topics the LDA is trained on
 NUM_TOP_ARTICLES = 5  # number of top N articles to be used for the article intersections
 
@@ -169,7 +170,7 @@ def get_lda_stability(lda1: LdaMulticore, lda2: LdaMulticore, articles_i: list,
         total_intersection_size += len(lda1_top5_docs.intersection(lda2_top5_docs))
 
     # normalize the total intersection size by the number of documents
-    total_intersection_size /= len(lda1_article_topics_j)
+    total_intersection_size /= NUM_TARGET_ARTICLES
     print("Mean Intersection Size: ", total_intersection_size)
 
     return total_intersection_size
@@ -218,7 +219,11 @@ def main(corpus_sizes: float) -> None:
 
         # fill the article lists with random articles from the bow_corpus
         for _ in range(NUM_ARTICLES):
+            # a_j
             articles_i.append(bow_corpus[np.random.randint(len(bow_corpus))])
+
+        for _ in range(NUM_TARGET_ARTICLES):
+            # b_j as the target articles
             articles_j.append(bow_corpus[np.random.randint(len(bow_corpus))])
 
         
