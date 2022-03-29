@@ -19,8 +19,8 @@ from matplotlib import pyplot as plt
 LDA_PATH = "./models/" # the path of the data on which the lda should be tested
 DATA_PATH = "./data/wiki_data.tar"
 PLOT_PATH = "./plots/"
-NUM_ARTICLES = 100 # number of articles to be used to find the best N ones
-NUM_TARGET_ARTICLES = 10 # number of target articles to build the mean
+NUM_ARTICLES = 1000 # number of articles to be used to find the best N ones
+NUM_TARGET_ARTICLES = 100 # number of target articles to build the mean
 NUM_TOPICS = 20 # number of topics the LDA is trained on
 NUM_TOP_ARTICLES = 5  # number of top N articles to be used for the article intersections
 
@@ -65,6 +65,12 @@ def get_similarity(topics_i: list, topics_j: list) -> float:
        :param topics_j: list of topics of the second document
        :return: the similarity of the two topic vectors
     """
+    length_difference = abs(len(topics_i) - len(topics_j))
+    if len(topics_i) > len(topics_j):
+        topics_j = topics_j + [0] * length_difference
+    elif len(topics_j) > len(topics_i):
+        topics_i = topics_i + [0] * length_difference
+        
     topics_i = torch.tensor(topics_i)
     topics_j = torch.tensor(topics_j)
 
@@ -124,19 +130,37 @@ def get_lda_stability(lda1: LdaMulticore, lda2: LdaMulticore, articles_i: list,
     # obtain the topic lists of the documents and save them in a list
     # also only keep their topic ID and cut of the probabilities
     # (topic embedding of the articles)
-    lda1_article_topics_i = [topic_tuple[0] for topic_tuple in
-                             [lda1.get_document_topics(article)
-                              for article in articles_i]]
-    lda1_article_topics_j = [topic_tuple[0] for topic_tuple in
-                             [lda1.get_document_topics(article)
-                              for article in articles_j]]
+    lda1_article_topics_i = []
+    for article in articles_i:
+        document_topics = lda1.get_document_topics(article)
+        current_topics = []
+        for topic_tuple in document_topics:
+            current_topics.append(topic_tuple[0])
+        lda1_article_topics_i.append(current_topics)
 
-    lda2_article_topics_i = [topic_tuple[0] for topic_tuple in
-                             [lda2.get_document_topics(article)
-                              for article in articles_i]]
-    lda2_article_topics_j = [topic_tuple[0] for topic_tuple in
-                             [lda2.get_document_topics(article)
-                              for article in articles_j]]
+    lda1_article_topics_j = []
+    for article in articles_j:
+        document_topics = lda1.get_document_topics(article)
+        current_topics = []
+        for topic_tuple in document_topics:
+            current_topics.append(topic_tuple[0])
+        lda1_article_topics_j.append(current_topics)
+
+    lda2_article_topics_i = []
+    for article in articles_i:
+        document_topics = lda2.get_document_topics(article)
+        current_topics = []
+        for topic_tuple in document_topics:
+            current_topics.append(topic_tuple[0])
+        lda2_article_topics_i.append(current_topics)
+
+    lda2_article_topics_j = []
+    for article in articles_j:
+        document_topics = lda2.get_document_topics(article)
+        current_topics = []
+        for topic_tuple in document_topics:
+            current_topics.append(topic_tuple[0])
+        lda2_article_topics_j.append(current_topics)
 
     total_intersection_size = 0.
 
@@ -168,12 +192,14 @@ def get_lda_stability(lda1: LdaMulticore, lda2: LdaMulticore, articles_i: list,
 
         # add their intersection size to the total intersection size
         total_intersection_size += len(lda1_top5_docs.intersection(lda2_top5_docs))
+        #print(len(lda1_top5_docs.intersection(lda2_top5_docs)))
 
     # normalize the total intersection size by the number of documents
-    total_intersection_size /= NUM_TARGET_ARTICLES
-    print("Mean Intersection Size: ", total_intersection_size)
+    print(f"Total Intersection Size: {total_intersection_size}")
+    mean_intersection_size = total_intersection_size / NUM_TARGET_ARTICLES
+    print(f"Mean Intersection Size: {mean_intersection_size}")
 
-    return total_intersection_size
+    return mean_intersection_size
 
 
 def main(corpus_sizes: float) -> None:
@@ -226,7 +252,6 @@ def main(corpus_sizes: float) -> None:
             # b_j as the target articles
             articles_j.append(bow_corpus[np.random.randint(len(bow_corpus))])
 
-        
         stability_values[corpus_size] = get_lda_stability(lda1, lda2, articles_i, articles_j)
 
     visualize_results(stability_values)
