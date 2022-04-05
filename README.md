@@ -19,9 +19,8 @@ Preprocess the files by calling the gensim script in the same directory as the d
 python -m gensim.scripts.make_wiki <PATH_TO_WIKI_DUMP> ./wiki
 ```
 (This will take about 7-8 hours depending on your CPU)
-Then compress the .mm ouput files and decompress the id->word mapping by using bzip2 e.g.:
+Then decompress the id->word mapping by using bzip2 e.g.:
 ```
-bzip2 wiki_bow.mm
 bunzip2 wiki_wordids.txt.bz2
 ```
 Training the LDA will also take several hours. So make sure to use the **--num_workers** flag to speed up the computation accordingly to your computers specs.
