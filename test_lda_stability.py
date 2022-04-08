@@ -113,7 +113,6 @@ def visualize_results(stability_dict: dict) -> None:
     fig.tight_layout()
 
     plt.savefig(PLOT_PATH+"stability_plot.png")
-    plt.show()
 
 
 def get_lda_stability(lda1: LdaMulticore, lda2: LdaMulticore, articles_i: list,
@@ -187,12 +186,9 @@ def get_lda_stability(lda1: LdaMulticore, lda2: LdaMulticore, articles_i: list,
         # create a set of the top 5 documents
         lda1_top5_docs = {doc_tuple[0] for doc_tuple in lda1_document_ranking[:NUM_TOP_ARTICLES]}
         lda2_top5_docs = {doc_tuple[0] for doc_tuple in lda2_document_ranking[:NUM_TOP_ARTICLES]}
-        #print(f"LDA1 top 5 documents: {lda1_top5_docs}")
-        #print(f"LDA2 top 5 documents: {lda2_top5_docs}")
 
         # add their intersection size to the total intersection size
         total_intersection_size += len(lda1_top5_docs.intersection(lda2_top5_docs))
-        #print(len(lda1_top5_docs.intersection(lda2_top5_docs)))
 
     # normalize the total intersection size by the number of documents
     print(f"Total Intersection Size: {total_intersection_size}")
